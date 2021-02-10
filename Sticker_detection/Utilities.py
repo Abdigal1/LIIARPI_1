@@ -153,3 +153,5 @@ def stickerFilter(img,th=0.8):
   stc=cont2Img(binary_img,selected_forms)
   con=convex_hull_image(stc)
   return applyMask(img,np.invert(con))
+
+  
