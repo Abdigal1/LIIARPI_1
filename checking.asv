@@ -1,0 +1,9 @@
+close all;clear;clc
+myDir = uigetdir; %gets directory
+myFiles = dir(fullfile(myDir,'*.jpg')); %gets all wav files in struct
+for k = 1:length(myFiles)
+  baseFileName = myFiles(k).name;
+  fullFileName = fullfile(myDir, baseFileName);
+  a = imshow(full)
+  fprintf(1, 'Now reading %s\n', fullFileName);
+end
