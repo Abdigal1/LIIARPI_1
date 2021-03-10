@@ -1,6 +1,6 @@
 close all;clear;
 %% Detección del ojo(eye)
-a = imread('c1anemia-101.jpg');%Falta 101 166 572
+a = imread('SF_c1anemia-102.jpg');%Falta 101 166 572
 %Caso extremo 676
 b = rgb2hsv(a);
 [W, H, ~] = size(a);
