@@ -154,4 +154,33 @@ def stickerFilter(img,th=0.8):
   con=convex_hull_image(stc)
   return applyMask(img,np.invert(con))
 
-  
+def stickerCut(img,th=0.8):
+  val_img=prePro(img)
+  binary_img = get_binary(val_img,th)
+  contours=getBiggestCont(binary_img,n=10)
+  contours=closedCon(contours,binary_img)
+  cont=contenedContours(contours)
+  conte=nonContened(contours,cont)
+  contours=containerContours(conte,cont)
+  pca = PCA(n_components=2)
+  selected_forms=similarForms(contours,pca)
+  stc=cont2Img(binary_img,selected_forms)
+  con=convex_hull_image(stc)
+  pth=300
+  Recorte_aumento=500
+  TIndex=np.where(con==True)
+  Xmax=np.max(TIndex[0])+Recorte_aumento
+  Xmin=np.min(TIndex[0])-Recorte_aumento
+  Ymax=np.max(TIndex[1])+Recorte_aumento
+  Ymin=np.min(TIndex[1])-Recorte_aumento
+  if Xmin<pth:
+    Xmin=pth
+  if Ymin<pth:
+    Ymin=pth
+  if Xmax>con.shape[0]-pth:
+    Xmax=con.shape[0]-pth
+  if Ymax>con.shape[1]-pth:
+    Ymax=con.shape[1]-pth
+  con[:,:]=False
+  con[Xmin:Xmax,Ymin:Ymax]=True
+  return applyMask(img,con)
