@@ -208,3 +208,32 @@ def get_X_U(img,mask,n_segments=800):
         DIRID[i]['X']=x
         DIRID[i]['U']=u
     return DIRID
+
+def get_Statistical_Descriptors(img,n_segments=800):
+    lum = color.rgb2gray(img)
+    mask1=lum>0
+
+    m_slic = slic(img, n_segments=n_segments,sigma=5,mask=mask1)
+
+    RID=set(m_slic.flatten())
+    f=np.zeros((img.shape[0],img.shape[1],4))
+    f[:,:,0:3]=img[:,:,0:3]
+    f[:,:,3]=m_slic
+
+    DIRID={i:{'U':np.zeros((3)),'X':np.zeros((3)),
+              'Per':np.zeros((3)),'Mo':np.zeros((3))} for i in RID}
+    indx=np.where(f[:,:,3]==1)
+    f[indx[0],indx[1],:]
+
+    for i in RID:
+        indx=np.where(f[:,:,3]==i)
+        x=np.mean(f[indx[0],indx[1],:],axis=0)
+        u=np.std(f[indx[0],indx[1],:],axis=0)
+        perc=np.percentile(f[indx[0],indx[1],:],np.array([0,25,50,75,100]),axis=0)
+        hist=np.histogram(f[indx[0],indx[1],:],bins=50,range=(0,255))
+        Mo=hist[1][np.where(hist[0]==np.max(hist[0]))]
+        DIRID[i]['X']=x
+        DIRID[i]['U']=u
+        DIRID[i]['Per']=perc
+        DIRID[i]['Mo']=Mo
+    return DIRID
