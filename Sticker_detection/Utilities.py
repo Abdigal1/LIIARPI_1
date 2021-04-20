@@ -237,3 +237,18 @@ def get_Statistical_Descriptors(img,n_segments=800):
         DIRID[i]['Per']=perc
         DIRID[i]['Mo']=Mo
     return DIRID
+
+
+def replace_err(data):
+    return np.concatenate((data[:2],np.array(['c'+data[2][9:]])),axis=0)
+v_replace_err=np.vectorize(replace_err,signature="(n)->(m)")
+def no_spaces(data):
+    f=np.array(data[0].split(" ")[1:]+data[1].split(" ")[1:])
+    return np.array([f])
+v_no_spaces=np.vectorize(pyfunc=no_spaces,signature="(m)->(k)")
+
+def assemble_mask(xywh,imgnames,name):
+    marco=xywh[np.where(imgnames==name)].astype(int)[0]+1
+    mask=np.full((img.shape),0)
+    mask[marco[1]:(marco[1]+marco[3]),marco[0]:(marco[0]+marco[2]),:]=ROI
+    return mask
