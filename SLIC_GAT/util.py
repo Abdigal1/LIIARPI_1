@@ -21,14 +21,7 @@ from model import GAT_MNIST
 
 NP_TORCH_FLOAT_DTYPE = np.float32
 NP_TORCH_LONG_DTYPE = np.int64
-
-NUM_FEATURES = 3
-NUM_CLASSES = 10
-
-def plot_image(image,desired_nodes=75,save_in=None):
-    # show the output of SLIC
-    fig = plt.figure("Image")
-    ax = fig.add_subplot(1, 1, 1)
+g.add_subplot(1, 1, 1)
     ax.imshow(image)#, cmap="gray")
     plt.axis("off")
     
