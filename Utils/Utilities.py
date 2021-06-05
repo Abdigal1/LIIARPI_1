@@ -209,32 +209,59 @@ def get_X_U(img,mask,n_segments=800):
         DIRID[i]['U']=u
     return DIRID
 
+
+def get_SD_by_format(f,ind1,ind2,j):
+    x=np.mean(f[ind1,ind2,j.reshape(-1,1)],axis=1)
+    u=np.std(f[ind1,ind2,j.reshape(-1,1)],axis=1)
+    perc=np.percentile(f[ind1,ind2,j.reshape(-1,1)],np.array([0,25,50,75,100]),axis=1)
+    hist=np.vectorize(pyfunc=(lambda t:np.histogram(f[ind1,ind2,t],bins=50,range=(0,255))),
+                  signature='()->(j),(k)')(j)
+    Mo=np.vectorize(pyfunc=(lambda x,y:y[np.where(x==np.max(x))]),signature='(j),(k)->()')(hist[0],hist[1])
+    return np.vstack((x,u,perc,Mo))
+v_get_SD_by_format=np.vectorize(pyfunc=get_SD_by_format,signature='(x,y,z),(a),(b),(j)->(q,w)')
+
+def pack_segments(DIRID,f,i):
+    indx=np.where(f[:,:,9]==i)
+    SD_rgb_hsv_lab=v_get_SD_by_format(f,indx[0],indx[1],dims)
+    DIRID[i]['rgb_mean']=SD_rgb_hsv_lab[0,0]
+    DIRID[i]['rgb_std']=SD_rgb_hsv_lab[0,1]
+    DIRID[i]['rgb_per']=SD_rgb_hsv_lab[0,2]
+    DIRID[i]['rgb_mo']=SD_rgb_hsv_lab[0,3]
+    DIRID[i]['hsv_mean']=SD_rgb_hsv_lab[1,0]
+    DIRID[i]['hsv_std']=SD_rgb_hsv_lab[1,1]
+    DIRID[i]['hsv_per']=SD_rgb_hsv_lab[1,2]
+    DIRID[i]['hsv_mo']=SD_rgb_hsv_lab[1,3]
+    DIRID[i]['lab_mean']=SD_rgb_hsv_lab[2,0]
+    DIRID[i]['lab_std']=SD_rgb_hsv_lab[2,1]
+    DIRID[i]['lab_per']=SD_rgb_hsv_lab[2,2]
+    DIRID[i]['lab_mo']=SD_rgb_hsv_lab[2,3]
+    return 0
+v_pack_segments=np.vectorize(pyfunc=pack_segments,signature="(),(x,y,z),()->()")
+
 def get_Statistical_Descriptors(img,mask,n_segments=800):
-    lum = color.rgb2gray(img)
+    lum = np.mean(mask,axis=2).astype(int)
     mask1=lum>0
 
     m_slic = slic(img, n_segments=n_segments,sigma=5,slic_zero=True,mask=mask1)
 
-    RID=set(m_slic.flatten())
-    f=np.zeros((img.shape[0],img.shape[1],4))
+    fig = plt.figure("Superpixels -- %d segments" % (500),figsize=(10,10))
+    ax = fig.add_subplot(1, 1, 1)
+    ax.imshow(mark_boundaries(img, m_slic))
+    plt.axis("off")
+    
+    RID=np.unique(m_slic.flatten())
+    f=np.zeros((img.shape[0],img.shape[1],3+3+3+1))
     f[:,:,0:3]=img[:,:,0:3]
-    f[:,:,3]=m_slic
+    f[:,:,3:6]=color.rgb2hsv(img)[:,:,0:3]
+    f[:,:,6:9]=color.rgb2lab(img)[:,:,0:3]
+    f[:,:,9]=m_slic
 
-    DIRID={int(i):{'U':np.zeros((3)),'X':np.zeros((3)),
-              'Per':np.zeros((3)),'Mo':np.zeros((3))} for i in RID}
-    indx=np.where(f[:,:,3]==1)
+    DIRID={int(i):{'rbg_mean':np.zeros((3)),'rgb_std':np.zeros((3)),'rgb_per':np.zeros((3)),'rgb_mo':np.zeros((3)),
+                   'lab_mean':np.zeros((3)),'lab_std':np.zeros((3)),'lab_per':np.zeros((3)),'lab_mo':np.zeros((3)),
+                   'hsv_mean':np.zeros((3)),'hsv_std':np.zeros((3)),'hsv_per':np.zeros((3)),'hsv_mo':np.zeros((3)),
+                  } for i in RID}
 
-    for i in RID:
-        indx=np.where(f[:,:,3]==i)
-        x=np.mean(f[indx[0],indx[1],:],axis=0)
-        u=np.std(f[indx[0],indx[1],:],axis=0)
-        perc=np.percentile(f[indx[0],indx[1],:],np.array([0,25,50,75,100]),axis=0)
-        hist=np.histogram(f[indx[0],indx[1],:],bins=50,range=(0,255))
-        Mo=hist[1][np.where(hist[0]==np.max(hist[0]))]
-        DIRID[i]['X']=x
-        DIRID[i]['U']=u
-        DIRID[i]['Per']=perc
-        DIRID[i]['Mo']=Mo
+    v_pack_segments(DIRID,f,RID)
     return DIRID
 
 
@@ -251,3 +278,4 @@ def assemble_mask(xywh,img,ROI):
     mask=np.full((img.shape),0)
     mask[marco[1]:(marco[1]+marco[3]),marco[0]:(marco[0]+marco[2]),:]=ROI
     return mask
+
