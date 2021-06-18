@@ -216,13 +216,13 @@ def get_SD_by_format(f,ind1,ind2,j):
     perc=np.percentile(f[ind1,ind2,j.reshape(-1,1)],np.array([0,25,50,75,100]),axis=1)
     hist=np.vectorize(pyfunc=(lambda t:np.histogram(f[ind1,ind2,t],bins=50,range=(0,255))),
                   signature='()->(j),(k)')(j)
-    Mo=np.vectorize(pyfunc=(lambda x,y:y[np.where(x==np.max(x))]),signature='(j),(k)->()')(hist[0],hist[1])
+    Mo=np.vectorize(pyfunc=(lambda x,y:y[np.where(x==np.max(x))[0][0]]),signature='(j),(k)->()')(hist[0],hist[1])
     return np.vstack((x,u,perc,Mo))
 v_get_SD_by_format=np.vectorize(pyfunc=get_SD_by_format,signature='(x,y,z),(a),(b),(j)->(q,w)')
 
 def pack_segments(DIRID,f,i):
     indx=np.where(f[:,:,9]==i)
-    SD_rgb_hsv_lab=v_get_SD_by_format(f,indx[0],indx[1],dims)
+    SD_rgb_hsv_lab=v_get_SD_by_format(f,indx[0],indx[1],np.arange(1,10).reshape(3,3))
     DIRID[i]['rgb_mean']=SD_rgb_hsv_lab[0,0]
     DIRID[i]['rgb_std']=SD_rgb_hsv_lab[0,1]
     DIRID[i]['rgb_per']=SD_rgb_hsv_lab[0,2]
@@ -235,6 +235,11 @@ def pack_segments(DIRID,f,i):
     DIRID[i]['lab_std']=SD_rgb_hsv_lab[2,1]
     DIRID[i]['lab_per']=SD_rgb_hsv_lab[2,2]
     DIRID[i]['lab_mo']=SD_rgb_hsv_lab[2,3]
+    #Descriptores espaciales--------------------------------------------
+    DIRID[i]['x_mean']=np.mean(indx[0])
+    DIRID[i]['x_std']=np.std(indx[0])
+    DIRID[i]['y_mean']=np.mean(indx[1])
+    DIRID[i]['y_std']=np.std(indx[1])
     return 0
 v_pack_segments=np.vectorize(pyfunc=pack_segments,signature="(),(x,y,z),()->()")
 
@@ -243,11 +248,6 @@ def get_Statistical_Descriptors(img,mask,n_segments=800):
     mask1=lum>0
 
     m_slic = slic(img, n_segments=n_segments,sigma=5,slic_zero=True,mask=mask1)
-
-    fig = plt.figure("Superpixels -- %d segments" % (500),figsize=(10,10))
-    ax = fig.add_subplot(1, 1, 1)
-    ax.imshow(mark_boundaries(img, m_slic))
-    plt.axis("off")
     
     RID=np.unique(m_slic.flatten())
     f=np.zeros((img.shape[0],img.shape[1],3+3+3+1))
