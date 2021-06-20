@@ -240,10 +240,32 @@ def pack_segments(DIRID,f,i):
     DIRID[i]['x_std']=np.std(indx[0])
     DIRID[i]['y_mean']=np.mean(indx[1])
     DIRID[i]['y_std']=np.std(indx[1])
+    DIRID[i]['N']=indx[0].shape[0]
     return 0
 v_pack_segments=np.vectorize(pyfunc=pack_segments,signature="(),(x,y,z),()->()")
 
 def get_Statistical_Descriptors(img,mask,n_segments=800):
+    lum = np.mean(mask,axis=2).astype(int)
+    mask1=lum>0
+
+    m_slic = slic(img, n_segments=n_segments,sigma=5,slic_zero=True,mask=mask1)
+    
+    RID=np.unique(m_slic.flatten())
+    f=np.zeros((img.shape[0],img.shape[1],3+3+3+1))
+    f[:,:,0:3]=img[:,:,0:3]
+    f[:,:,3:6]=color.rgb2hsv(img)[:,:,0:3]
+    f[:,:,6:9]=color.rgb2lab(img)[:,:,0:3]
+    f[:,:,9]=m_slic
+
+    DIRID={int(i):{'rgb_mean':np.zeros((3)),'rgb_std':np.zeros((3)),'rgb_per':np.zeros((3)),'rgb_mo':np.zeros((3)),
+                   'lab_mean':np.zeros((3)),'lab_std':np.zeros((3)),'lab_per':np.zeros((3)),'lab_mo':np.zeros((3)),
+                   'hsv_mean':np.zeros((3)),'hsv_std':np.zeros((3)),'hsv_per':np.zeros((3)),'hsv_mo':np.zeros((3)),
+                  } for i in RID}
+
+    v_pack_segments(DIRID,f,RID)
+    return DIRID
+
+def get_Statistical_Descriptors_(img,mask,n_segments=800):
     lum = np.mean(mask,axis=2).astype(int)
     mask1=lum>0
 
@@ -262,7 +284,7 @@ def get_Statistical_Descriptors(img,mask,n_segments=800):
                   } for i in RID}
 
     v_pack_segments(DIRID,f,RID)
-    return DIRID
+    return DIRID,m_slic
 
 
 def replace_err(data):
@@ -279,3 +301,58 @@ def assemble_mask(xywh,img,ROI):
     mask[marco[1]:(marco[1]+marco[3]),marco[0]:(marco[0]+marco[2]),:]=ROI
     return mask
 
+def get_graph_from_image(image,mask,desired_nodes=20):
+    SD,segments=get_Statistical_Descriptors_(image,mask,n_segments=desired_nodes)
+    nodes=np.array(list(SD))[:]
+    node_features=np.vectorize(lambda SD,node:SD[node])(SD,nodes)
+    G = nx.Graph()
+    for node in nodes[1:]:
+        data=np.array(list(node_features[node].items()))[:,1]
+        afeatures=np.concatenate((np.concatenate(data[:13]),data[13:]))
+        n_features=afeatures.shape[0]
+        G.add_node(node-1, features = afeatures)
+    
+    vs_right = np.vstack([segments[:,:-1].ravel(), segments[:,1:].ravel()])
+    vs_below = np.vstack([segments[:-1,:].ravel(), segments[1:,:].ravel()])
+    bneighbors = np.unique(np.hstack([vs_right, vs_below]), axis=1)
+    bneighbors=np.delete(bneighbors,np.where(bneighbors[1,:]==0),axis=1)
+    bneighbors=np.delete(bneighbors,np.where(bneighbors[0,:]==0),axis=1)-1
+    
+    for i in range(bneighbors.shape[1]):
+        if (bneighbors[0,i] != bneighbors[1,i]):
+            G.add_edge(bneighbors[0,i],bneighbors[1,i])
+    
+    for node in nodes[1:]:
+        G.add_edge(node-1,node-1)
+    
+    n = len(G.nodes)
+    m = len(G.edges)
+    h = np.zeros([n,n_features])
+    edges = np.zeros([2*m,2])
+    for e,(s,t) in enumerate(G.edges):
+        edges[e,0] = s
+        edges[e,1] = t
+        
+        edges[m+e,0] = t
+        edges[m+e,1] = s
+    for i in G.nodes:
+        h[i,:] = G.nodes[i]["features"]
+    return SD,G, h, edges
+
+def sample_central(SD,G,samp_frac=0.25,maxdeg=3):
+    centers=np.vectorize(pyfunc=lambda i,SD: np.array([SD[i]["x_mean"],SD[i]["y_mean"]]),
+             signature="(),()->(j)")(np.arange(1,len(G.nodes)),SD)
+    c_node=np.argmin(np.linalg.norm(centers-np.mean(centers,axis=0),axis=1))
+    sampled=[c_node]
+    deg=1
+    th_deg_nei=np.array(list(nx.single_source_shortest_path_length(G, c_node, cutoff=maxdeg).items()))
+    selected=int(centers.shape[0]*samp_frac)
+    while len(sampled)!=selected:
+        nd=th_deg_nei[np.where(th_deg_nei[:,1]==1)[0]][:,0]
+        if (selected-len(sampled))<=len(nd):
+            new=np.random.choice(nd,size=selected-len(sampled),replace=False)
+        else:
+            new=nd
+        sampled=sampled+new.tolist()
+        deg=deg+1
+    return sampled
