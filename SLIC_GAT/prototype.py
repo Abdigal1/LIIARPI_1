@@ -34,7 +34,7 @@ def train_model(
     print("Processing images into graphs...", end="")
     ptime = time.time()
     with multiprocessing.Pool() as p:
-        graphs = np.array(p.map(util.get_graph_from_image, imgs))
+        graphs = np.array(p.map(util.get_graph_from_image, imgs))  #Object numpy array (2(h,edges),#img)
     del imgs
     ptime = time.time() - ptime
     print(" Took {ptime}s".format(ptime=ptime))
