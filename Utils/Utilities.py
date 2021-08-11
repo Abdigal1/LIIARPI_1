@@ -12,6 +12,7 @@ import argparse
 from skimage.color import rgb2hsv
 from skimage.morphology import convex_hull_image
 from sklearn.decomposition import PCA
+import networkx as nx
 from skimage import measure
 from skimage import color
 
@@ -339,14 +340,15 @@ def get_graph_from_image(image,mask,desired_nodes=20):
         h[i,:] = G.nodes[i]["features"]
     return SD,G, h, edges
 
-def sample_central(SD,G,samp_frac=0.25,maxdeg=3):
+def sample_central(SD,G,num=5,maxdeg=3):
     centers=np.vectorize(pyfunc=lambda i,SD: np.array([SD[i]["x_mean"],SD[i]["y_mean"]]),
              signature="(),()->(j)")(np.arange(1,len(G.nodes)),SD)
     c_node=np.argmin(np.linalg.norm(centers-np.mean(centers,axis=0),axis=1))
     sampled=[c_node]
     deg=1
     th_deg_nei=np.array(list(nx.single_source_shortest_path_length(G, c_node, cutoff=maxdeg).items()))
-    selected=int(centers.shape[0]*samp_frac)
+    #selected=int(centers.shape[0]*samp_frac)
+    selected=num
     while len(sampled)!=selected:
         nd=th_deg_nei[np.where(th_deg_nei[:,1]==1)[0]][:,0]
         if (selected-len(sampled))<=len(nd):
