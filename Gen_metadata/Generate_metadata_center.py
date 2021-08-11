@@ -27,7 +27,7 @@ xywh=xywh.reshape(-1,4).astype(int)+1
 
 dir_origin=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Imagenes_originales\\'
 dir_ROI=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Sem_Auto\\eye_'
-dir_meta=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Metadata_v3\\'
+dir_meta=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Metadata_v4G\\'
 #FOR
 for name in imgnames:
     try:
@@ -37,12 +37,13 @@ for name in imgnames:
 #        lum = np.mean(mask,axis=2).astype(int)
 #        mask1=lum > 0
         SD,G,h,edges=get_graph_from_image(img,mask,desired_nodes=20)
-        Sampled=sample_central(SD,G,num=5,maxdeg=3)
-        NSD={}
-        for ID in Sampled:
-            NSD[ID]=SD[ID]
+        #Sampled=sample_central(SD,G,num=5,maxdeg=3)
+        #NSD={}
+        #for ID in Sampled:
+        #    NSD[ID]=SD[ID]
 
-        np.save(dir_meta+name.split('.')[0]+'.npy',NSD)
+        #np.save(dir_meta+name.split('.')[0]+'.npy',NSD)
+        nx.readwrite.adjlist.write_adjlist(G,dir_meta+name.split('.')[0])
         print("done")
     except Exception as e:
         print(name)
