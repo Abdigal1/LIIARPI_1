@@ -12,7 +12,7 @@ from skimage import morphology
 import networkx as nx
 import json
 
-f1=open(('\\').join(pth.split('\\')[:-2])+"\\Data_base\\validcrop.txt","r")
+f1=open(('\\').join(pth.split('\\')[:-4])+"\\Data_base\\validcrop.txt","r")
 lines=f1.readlines()
 linesn=np.array(lines)
 linesn=np.delete(lines,np.where(linesn=="\n"))
@@ -25,9 +25,9 @@ xywh=v_no_spaces(xywh)
 xywh=np.vectorize(pyfunc=(lambda x:float(x)))(xywh.reshape(1,-1)[0])
 xywh=xywh.reshape(-1,4).astype(int)+1
 
-dir_origin=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Imagenes_originales\\'
-dir_ROI=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Sem_Auto\\eye_'
-dir_meta=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Metadata_v4G\\'
+dir_origin=('\\').join(pth.split('\\')[:-4])+'\\Data_base\\Imagenes_originales\\'
+dir_ROI=('\\').join(pth.split('\\')[:-4])+'\\Data_base\\Sem_Auto\\eye_'
+dir_meta=('\\').join(pth.split('\\')[:-4])+'\\Data_base\\Metada_V4G\\'
 #FOR
 for name in imgnames:
     try:
@@ -42,7 +42,7 @@ for name in imgnames:
         #for ID in Sampled:
         #    NSD[ID]=SD[ID]
 
-        #np.save(dir_meta+name.split('.')[0]+'.npy',NSD)
+        np.save(dir_meta+name.split('.')[0]+'.npy',np.array([h,edges]))
         nx.readwrite.adjlist.write_adjlist(G,dir_meta+name.split('.')[0])
         print("done")
     except Exception as e:
