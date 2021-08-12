@@ -338,7 +338,7 @@ def get_graph_from_image(image,mask,desired_nodes=20):
         edges[m+e,0] = t
         edges[m+e,1] = s
     for i in G.nodes:
-        print(G.nodes[i]["features"])
+        #print(G.nodes[i]["features"])
         h[i,:] = G.nodes[i]["features"]
     return SD,G, h, edges
 
