@@ -33,7 +33,10 @@ class Dataset(torch.utils.data.Dataset):
             self.root_dir = root_dir
 
             raw_data=np.array(os.listdir(root_dir+"\\Sem_Auto1"))
+            meta_data=np.array(os.listdir(root_dir+"\\\\Metadata_V4G_"))
+
             y=np.vectorize(pyfunc=lambda stg:stg.split(".")[0].split("_")[-1])(raw_data).reshape(-1,1)
+
             self.landmarks_frame=np.hstack((raw_data.reshape(-1,1),y))
             self.transform = transform
 
