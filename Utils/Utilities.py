@@ -258,9 +258,9 @@ def get_Statistical_Descriptors(img,mask,n_segments=800):
     f[:,:,6:9]=color.rgb2lab(img)[:,:,0:3]
     f[:,:,9]=m_slic
 
-    DIRID={int(i):{'rgb_mean':np.zeros((3)),'rgb_std':np.zeros((3)),'rgb_per':np.zeros((3)),'rgb_mo':np.zeros((3)),
-                   'lab_mean':np.zeros((3)),'lab_std':np.zeros((3)),'lab_per':np.zeros((3)),'lab_mo':np.zeros((3)),
-                   'hsv_mean':np.zeros((3)),'hsv_std':np.zeros((3)),'hsv_per':np.zeros((3)),'hsv_mo':np.zeros((3)),
+    DIRID={int(i):{'rgb_mean':np.zeros((1)),'rgb_std':np.zeros((1)),'rgb_per':np.zeros((1)),'rgb_mo':np.zeros((1)),
+                   'lab_mean':np.zeros((1)),'lab_std':np.zeros((1)),'lab_per':np.zeros((1)),'lab_mo':np.zeros((1)),
+                   'hsv_mean':np.zeros((1)),'hsv_std':np.zeros((1)),'hsv_per':np.zeros((1)),'hsv_mo':np.zeros((1)),
                   } for i in RID}
 
     v_pack_segments(DIRID,f,RID)
@@ -279,7 +279,7 @@ def get_Statistical_Descriptors_(img,mask,n_segments=800):
     f[:,:,6:9]=color.rgb2lab(img)[:,:,0:3]
     f[:,:,9]=m_slic
 
-    DIRID={int(i):{'rbg_mean':np.zeros((3)),'rgb_std':np.zeros((3)),'rgb_per':np.zeros((3)),'rgb_mo':np.zeros((3)),
+    DIRID={int(i):{'rgb_mean':np.zeros((3)),'rgb_std':np.zeros((3)),'rgb_per':np.zeros((3)),'rgb_mo':np.zeros((3)),
                    'lab_mean':np.zeros((3)),'lab_std':np.zeros((3)),'lab_per':np.zeros((3)),'lab_mo':np.zeros((3)),
                    'hsv_mean':np.zeros((3)),'hsv_std':np.zeros((3)),'hsv_per':np.zeros((3)),'hsv_mo':np.zeros((3)),
                   } for i in RID}
@@ -309,7 +309,8 @@ def get_graph_from_image(image,mask,desired_nodes=20):
     G = nx.Graph()
     for node in nodes[1:]:
         data=np.array(list(node_features[node].items()))[:,1]
-        afeatures=np.concatenate((np.concatenate(data[:13]),data[13:]))
+        #print(data)
+        afeatures=np.concatenate((np.concatenate(data[:12]),data[12:]))
         n_features=afeatures.shape[0]
         G.add_node(node-1, features = afeatures)
     
@@ -337,6 +338,7 @@ def get_graph_from_image(image,mask,desired_nodes=20):
         edges[m+e,0] = t
         edges[m+e,1] = s
     for i in G.nodes:
+        print(G.nodes[i]["features"])
         h[i,:] = G.nodes[i]["features"]
     return SD,G, h, edges
 

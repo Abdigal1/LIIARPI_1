@@ -28,11 +28,11 @@ def show_landmarks(image, landmarks):
 #plt.show()
 
 class Dataset(torch.utils.data.Dataset):
-      def __init__(self, csv_file, root_dir,transform=None):
+      def __init__(self, root_dir,transform=None):
             'Initialization'
             self.root_dir = root_dir
 
-            raw_data=np.array(os.listdir(root_dir))
+            raw_data=np.array(os.listdir(root_dir+"\\Sem_Auto1"))
             y=np.vectorize(pyfunc=lambda stg:stg.split(".")[0].split("_")[-1])(raw_data).reshape(-1,1)
             self.landmarks_frame=np.hstack((raw_data.reshape(-1,1),y))
             self.transform = transform
@@ -48,12 +48,14 @@ class Dataset(torch.utils.data.Dataset):
                   idx=idx.tolist()
 
             img_name = os.path.join(self.root_dir,self.landmarks_frame[idx, 0])
-            image = io.imread(img_name)
+            data_name=self.root_dir+"\\Metadata_V4G_\\"+(lambda d:("_").join(d.split('.')[0].split('_')[1:-1])+".npy")(self.landmarks_frame[idx, 0])
+            #image = io.imread(img_name)
+            data=np.load(data_name,allow_pickle=True)
             landmarks = self.landmarks_frame[idx, 1:]
             landmarks = np.array([landmarks])
 
             landmarks = landmarks.astype('float')
-            sample = {'image': image, 'landmarks': landmarks}
+            sample = {'image_graph': data, 'landmarks': landmarks}
             if self.transform:
                   sample=self.transform(sample)
 
