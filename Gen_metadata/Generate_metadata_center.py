@@ -12,7 +12,7 @@ from skimage import morphology
 import networkx as nx
 import json
 
-f1=open(('\\').join(pth.split('\\')[:-2])+"\\Data_base\\validcrop.txt","r")
+f1=open(('\\').join(pth.split('\\')[:-2])+"\\Data_base\\validcrop_1.txt","r")
 lines=f1.readlines()
 linesn=np.array(lines)
 linesn=np.delete(lines,np.where(linesn=="\n"))
@@ -24,6 +24,7 @@ imgnames=linesnc[:,2]
 xywh=v_no_spaces(xywh)
 xywh=np.vectorize(pyfunc=(lambda x:float(x)))(xywh.reshape(1,-1)[0])
 xywh=xywh.reshape(-1,4).astype(int)+1
+print(imgnames)
 
 dir_origin=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Imagenes_originales\\'
 dir_ROI=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Sem_Auto\\eye_'
