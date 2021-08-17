@@ -1,5 +1,7 @@
 from __future__ import print_function, division
 import os
+
+from numpy.lib.function_base import _SIGNATURE
 import torch
 import pandas as pd
 from skimage import io, transform
@@ -28,17 +30,39 @@ def show_landmarks(image, landmarks):
 #plt.show()
 
 class Dataset(torch.utils.data.Dataset):
-      def __init__(self, root_dir,transform=None):
+      def __init__(self, root_dir,medata_dir,transform=None):
             'Initialization'
+            #directories
             self.root_dir = root_dir
+            self.medata_dir=medata_dir
 
+            #Read names
             raw_data=np.array(os.listdir(root_dir+"\\Sem_Auto1"))
-            meta_data=np.array(os.listdir(root_dir+"\\\\Metadata_V4G_"))
+            self.raw_data=raw_data
+            meta_data=np.array(os.listdir(root_dir+"\\"+medata_dir))
+            self.meta_data=meta_data
 
-            y=np.vectorize(pyfunc=lambda stg:stg.split(".")[0].split("_")[-1])(raw_data).reshape(-1,1)
+            #only graph
+            grph_data=meta_data[np.vectorize(lambda dat:dat.split(".")[-1]=="npy")(meta_data)]
+            name_grph_data=np.vectorize(lambda dat: ("_").join(dat.split("_")[:1]))(grph_data)
+            uniq_grph_data=np.unique(name_grph_data)
 
-            self.landmarks_frame=np.hstack((raw_data.reshape(-1,1),y))
+            #Avoid non proccesed
+            pr_names=np.vectorize(lambda dat:(".").join(dat.split(".")[:-1]))(uniq_grph_data)
+            npr_names=np.vectorize(lambda dat:("_").join(dat.split("_")[1:-1]))(raw_data)
+            raw_data=raw_data[np.vectorize(lambda pr,dat:dat in pr,signature="(j),()->()")(pr_names,npr_names)]
+
+            #y=np.vectorize(pyfunc=lambda stg:stg.split(".")[0].split("_")[-1])(raw_data).reshape(-1,1)
+            y=np.vectorize(lambda dat:float((".").join(dat.split(".")[:-1]).split("_")[-1]))(raw_data).reshape(-1,1)
+            #self.y=y
+            #self.landmarks_frame=np.hstack((raw_data.reshape(-1,1),y))
+            self.landmarks_frame=np.hstack((grph_data.reshape(-1,1),y.reshape(-1,1)))
+            #elf.landmarks_frame=self.avoid_non_proccesed()
+            #self.landmarks_frame=self.broadcast_target()
             self.transform = transform
+
+      #def broadcast_target(self,):
+
 
       def __len__(self):
             'Denotes the total number of samples'
@@ -51,7 +75,74 @@ class Dataset(torch.utils.data.Dataset):
                   idx=idx.tolist()
 
             img_name = os.path.join(self.root_dir,self.landmarks_frame[idx, 0])
-            data_name=self.root_dir+"\\Metadata_V4G_\\"+(lambda d:("_").join(d.split('.')[0].split('_')[1:-1])+".npy")(self.landmarks_frame[idx, 0])
+            data_name=self.root_dir+"\\"+self.medata_dir+"\\"+(lambda d:("_").join(d.split('.')[0].split('_')[1:-1])+".npy")(self.landmarks_frame[idx, 0])
+            #image = io.imread(img_name)
+            data=np.load(data_name,allow_pickle=True)
+            landmarks = self.landmarks_frame[idx, 1:]
+            landmarks = np.array([landmarks])
+
+            landmarks = landmarks.astype('float')
+            sample = {'image_graph': data, 'landmarks': landmarks}
+            if self.transform:
+                  sample=self.transform(sample)
+
+            return sample
+
+class Rotated_Dataset(torch.utils.data.Dataset):
+      def __init__(self, root_dir,medata_dir,transform=None):
+            'Initialization'
+            #directories
+            self.root_dir = root_dir
+            self.medata_dir=medata_dir
+
+            #Read names
+            raw_data=np.array(os.listdir(root_dir+"\\Sem_Auto1"))
+            self.raw_data=raw_data
+            meta_data=np.array(os.listdir(root_dir+"\\"+medata_dir))
+            self.meta_data=meta_data
+
+            #only graph
+            grph_data=meta_data[np.vectorize(lambda dat:dat.split(".")[-1]=="npy")(meta_data)]
+            name_grph_data=np.vectorize(lambda dat: ("_").join(dat.split("_")[1:]))(grph_data)
+            uniq_grph_data=np.unique(name_grph_data)
+
+            #Avoid non proccesed
+            pr_names=np.vectorize(lambda dat:(".").join(dat.split(".")[:-1]))(uniq_grph_data)
+            npr_names=np.vectorize(lambda dat:("_").join(dat.split("_")[1:-1]))(raw_data)
+            raw_data=raw_data[np.vectorize(lambda pr,dat:dat in pr,signature="(j),()->()")(pr_names,npr_names)]
+            npr_names=np.vectorize(lambda dat:("_").join(dat.split("_")[1:-1]))(raw_data)
+
+            iy=np.vectorize(lambda dat:float((".").join(dat.split(".")[:-1]).split("_")[-1]))(raw_data).reshape(-1,)
+
+            #Broadcast y
+            y=np.zeros(name_grph_data.shape).reshape(-1,)
+            #np.vectorize(self.build_tar,signature="(i),(),(j),(k),(l)->()")(y,raw_data,raw_data,name_grph_data,iy)
+            name_grph_data=np.vectorize(lambda dat:('.').join(dat.split('.')[:-1]))(name_grph_data)
+            t=np.vectorize(self.build_tar,signature="(i),(),(j)->(w)")(npr_names,name_grph_data,iy)
+            t=np.hstack((grph_data.reshape(1,-1).T,t))
+
+            self.landmarks_frame=np.delete(t,1,axis=1)
+            
+            self.transform = transform
+
+      #def build_tar(self,tar,dat,names,graphs,y):
+      def build_tar(self,names,graphs,y):
+            #tar[dat==graphs]=tar[dat==graphs]+y[dat==names]
+            return np.array([graphs,str(y[graphs==names][0])])
+
+      def __len__(self):
+            'Denotes the total number of samples'
+            return len(self.landmarks_frame)
+
+      def __getitem__(self, idx):
+            'Generates one sample of data'
+            # Select sample
+            if torch.is_tensor(idx):
+                  idx=idx.tolist()
+
+            img_name = os.path.join(self.root_dir,self.landmarks_frame[idx, 0])
+            #data_name=self.root_dir+"\\"+self.medata_dir+"\\"+(lambda d:("_").join(d.split('.')[0].split('_')[1:-1])+".npy")(self.landmarks_frame[idx, 0])
+            data_name=self.root_dir+"\\"+self.medata_dir+"\\"+self.landmarks_frame[idx, 0]
             #image = io.imread(img_name)
             data=np.load(data_name,allow_pickle=True)
             landmarks = self.landmarks_frame[idx, 1:]
