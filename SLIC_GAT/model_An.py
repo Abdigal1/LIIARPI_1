@@ -117,16 +117,18 @@ class GAT_ANE(nn.Module):
     def forward(self,x,adj,src,tgt,Msrc,Mtgt,Mgraph):
         for l in self.GAT_layers:
             x = l(x,adj,src,tgt,Msrc,Mtgt)
+            print(x.shape)
         x = torch.mm(Mgraph.t(),x)
         for layer,act in zip(self.MLP_layers,self.MLP_acts):
             x = act(layer(x))
+            print(x.shape)
         return x
         
 
-class GAT_ANE_20191016134(nn.Module):
+class GAT_ANE_(nn.Module):
     
     def __init__(self,num_features,num_classes):
-        super(GAT_ANE,self).__init__()
+        super(GAT_ANE_,self).__init__()
         
         self.GAT_layer_sizes = [num_features,32,64,64]
         self.MLP_layer_sizes = [self.GAT_layer_sizes[-1],32,num_classes]

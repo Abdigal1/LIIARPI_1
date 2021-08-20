@@ -10,6 +10,52 @@ import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
 
+NP_TORCH_FLOAT_DTYPE = np.float32
+NP_TORCH_LONG_DTYPE = np.int64
+
+def batch_graphs_(gs):
+    NUM_FEATURES = gs[0][0].shape[-1]
+    G = 1
+    N=gs[0].shape[0]
+    M=gs[1].shape[0]
+    adj = np.zeros([N,N])
+    src = np.zeros([M])
+    tgt = np.zeros([M])
+    Msrc = np.zeros([N,M])
+    Mtgt = np.zeros([N,M])
+    Mgraph = np.zeros([N,G])
+    h = np.concatenate([g[0] for g in gs])
+    
+    n_acc = 0
+    m_acc = 0
+    #for g_idx, g in enumerate(gs):
+    n = gs[0].shape[0]
+    m = gs[1].shape[0]
+        
+    for e,(s,t) in enumerate(gs[1]):
+        adj[int(n_acc+s),int(n_acc+t)] = 1
+        adj[int(n_acc+t),int(n_acc+s)] = 1
+        
+        src[int(m_acc+e)] = n_acc+s
+        tgt[int(m_acc+e)] = n_acc+t
+            
+        Msrc[int(n_acc+s),int(m_acc+e)] = 1
+        Mtgt[int(n_acc+t),int(m_acc+e)] = 1
+            
+    Mgraph[int(n_acc):int(n_acc+n),0] = 1
+        
+    #n_acc += n
+    #m_acc += m
+    return (
+        h.astype(NP_TORCH_FLOAT_DTYPE),
+        adj.astype(NP_TORCH_FLOAT_DTYPE),
+        src.astype(NP_TORCH_LONG_DTYPE),
+        tgt.astype(NP_TORCH_LONG_DTYPE),
+        Msrc.astype(NP_TORCH_FLOAT_DTYPE),
+        Mtgt.astype(NP_TORCH_FLOAT_DTYPE),
+        Mgraph.astype(NP_TORCH_FLOAT_DTYPE)
+    )
+
 def read_csv(path,n):
       landmarks_frame = pd.read_csv(path)
       img_name = landmarks_frame.iloc[n, 0]
@@ -24,10 +70,23 @@ def show_landmarks(image, landmarks):
       plt.scatter(landmarks[:, 0], landmarks[:, 1], s=10, marker='.', c='r')
       plt.pause(0.001)  # pause a bit so that plots are updated
 
-#plt.figure()
-#show_landmarks(io.imread(os.path.join('faces/', img_name)),
-#               landmarks)
-#plt.show()
+def sample_central_simple(h,e,n):
+    h=np.hstack((h, np.linalg.norm(h[:,[-5,-3]]-np.mean(h[:,[-5,-3]],axis=0),axis=1).reshape(-1,1)))
+    h=np.hstack((h,np.arange(0,h.shape[0]).reshape(-1,1)))
+    
+    h = np.array(sorted(list(h), key=lambda ni: ni[-2], reverse=False))[:n]
+    h = np.array(sorted(list(h), key=lambda ni: ni[-1], reverse=False))
+    mp=np.hstack((h[:,-1].reshape(-1,1),np.arange(0,h.shape[0]).reshape(-1,1)))
+    
+    t=np.vectorize(lambda ni,ei:ei in ni,signature="(j),()->()")(h[:,-1],e.reshape(-1,)).reshape(-1,2)
+    e=e[np.prod(t,axis=1).astype(bool)]
+    e=np.vectorize(lambda mp,ei:mp[np.equal(mp[:,0],ei),1],
+                   signature='(j,i),()->()')(mp,e.reshape(-1,)).reshape(-1,2)
+    h[:,-1]=np.arange(0,h.shape[0])
+    h=h[:,:-2]
+    return h,e
+
+
 
 class Dataset(torch.utils.data.Dataset):
       def __init__(self, root_dir,medata_dir,transform=None):
@@ -37,9 +96,9 @@ class Dataset(torch.utils.data.Dataset):
             self.medata_dir=medata_dir
 
             #Read names
-            raw_data=np.array(os.listdir(root_dir+"\\Sem_Auto1"))
+            raw_data=np.array(os.listdir(os.path.join(root_dir,"Sem_Auto1")))
             self.raw_data=raw_data
-            meta_data=np.array(os.listdir(root_dir+"\\"+medata_dir))
+            meta_data=np.array(os.listdir(os.path.join(root_dir,medata_dir)))
             self.meta_data=meta_data
 
             #only graph
@@ -52,17 +111,9 @@ class Dataset(torch.utils.data.Dataset):
             npr_names=np.vectorize(lambda dat:("_").join(dat.split("_")[1:-1]))(raw_data)
             raw_data=raw_data[np.vectorize(lambda pr,dat:dat in pr,signature="(j),()->()")(pr_names,npr_names)]
 
-            #y=np.vectorize(pyfunc=lambda stg:stg.split(".")[0].split("_")[-1])(raw_data).reshape(-1,1)
             y=np.vectorize(lambda dat:float((".").join(dat.split(".")[:-1]).split("_")[-1]))(raw_data).reshape(-1,1)
-            #self.y=y
-            #self.landmarks_frame=np.hstack((raw_data.reshape(-1,1),y))
             self.landmarks_frame=np.hstack((grph_data.reshape(-1,1),y.reshape(-1,1)))
-            #elf.landmarks_frame=self.avoid_non_proccesed()
-            #self.landmarks_frame=self.broadcast_target()
             self.transform = transform
-
-      #def broadcast_target(self,):
-
 
       def __len__(self):
             'Denotes the total number of samples'
@@ -96,9 +147,11 @@ class Rotated_Dataset(torch.utils.data.Dataset):
             self.medata_dir=medata_dir
 
             #Read names
-            raw_data=np.array(os.listdir(root_dir+"\\Sem_Auto1"))
+            #raw_data=np.array(os.listdir(root_dir+"\\Sem_Auto1"))
+            raw_data=np.array(os.listdir(os.path.join(root_dir,"Sem_Auto1")))
             self.raw_data=raw_data
-            meta_data=np.array(os.listdir(root_dir+"\\"+medata_dir))
+            #meta_data=np.array(os.listdir(root_dir+"\\"+medata_dir))
+            meta_data=np.array(os.listdir(os.path.join(root_dir,medata_dir)))
             self.meta_data=meta_data
 
             #only graph
@@ -141,10 +194,12 @@ class Rotated_Dataset(torch.utils.data.Dataset):
                   idx=idx.tolist()
 
             img_name = os.path.join(self.root_dir,self.landmarks_frame[idx, 0])
-            #data_name=self.root_dir+"\\"+self.medata_dir+"\\"+(lambda d:("_").join(d.split('.')[0].split('_')[1:-1])+".npy")(self.landmarks_frame[idx, 0])
-            data_name=self.root_dir+"\\"+self.medata_dir+"\\"+self.landmarks_frame[idx, 0]
-            #image = io.imread(img_name)
+            data_name=os.path.join(self.root_dir,self.medata_dir,self.landmarks_frame[idx, 0])
             data=np.load(data_name,allow_pickle=True)
+            data=np.array(sample_central_simple(data[0],data[1],5),dtype=object)
+
+            #data=batch_graphs_(data)
+            #data={'h':data[0],'adj':data[1],'src':data[2],'tgt':data[3],'Msrc':data[4],'Mtgt':data[5],'Mgraph':data[6]}
             landmarks = self.landmarks_frame[idx, 1:]
             landmarks = np.array([landmarks])
 
@@ -152,7 +207,6 @@ class Rotated_Dataset(torch.utils.data.Dataset):
             sample = {'image_graph': data, 'landmarks': landmarks}
             if self.transform:
                   sample=self.transform(sample)
-
             return sample
 
 class Dataset_direct(torch.utils.data.Dataset):
