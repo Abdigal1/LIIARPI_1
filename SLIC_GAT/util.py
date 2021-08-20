@@ -61,7 +61,6 @@ def plot_graph_from_image(image,desired_nodes=75,save_in=None):
     vs_right = np.vstack([segments[:,:-1].ravel(), segments[:,1:].ravel()])
     vs_below = np.vstack([segments[:-1,:].ravel(), segments[1:,:].ravel()])
     bneighbors = np.unique(np.hstack([vs_right, vs_below]), axis=1)
-
     plt.scatter(centers[:,1],centers[:,0], c='r')
 
     for i in range(bneighbors.shape[1]):
@@ -226,19 +225,69 @@ def batch_graphs(gs):
         m = g[1].shape[0]
         
         for e,(s,t) in enumerate(g[1]):
-            adj[n_acc+s,n_acc+t] = 1
-            adj[n_acc+t,n_acc+s] = 1
+            adj[int(n_acc+s),int(n_acc+t)] = 1
+            adj[int(n_acc+t),int(n_acc+s)] = 1
             
-            src[m_acc+e] = n_acc+s
-            tgt[m_acc+e] = n_acc+t
+            src[int(m_acc+e)] = n_acc+s
+            tgt[int(m_acc+e)] = n_acc+t
             
-            Msrc[n_acc+s,m_acc+e] = 1
-            Mtgt[n_acc+t,m_acc+e] = 1
+            Msrc[int(n_acc+s),int(m_acc+e)] = 1
+            Mtgt[int(n_acc+t),int(m_acc+e)] = 1
             
-        Mgraph[n_acc:n_acc+n,g_idx] = 1
+        Mgraph[int(n_acc):int(n_acc+n),int(g_idx)] = 1
         
         n_acc += n
         m_acc += m
+    return (
+        h.astype(NP_TORCH_FLOAT_DTYPE),
+        adj.astype(NP_TORCH_FLOAT_DTYPE),
+        src.astype(NP_TORCH_LONG_DTYPE),
+        tgt.astype(NP_TORCH_LONG_DTYPE),
+        Msrc.astype(NP_TORCH_FLOAT_DTYPE),
+        Mtgt.astype(NP_TORCH_FLOAT_DTYPE),
+        Mgraph.astype(NP_TORCH_FLOAT_DTYPE)
+    )
+
+def batch_graphs_(gs):
+    NUM_FEATURES = gs[0][0].shape[-1]
+    G = 1
+    N = sum(g[0].shape[0] for g in gs) #Sum of nodes n*#img
+    M = sum(g[1].shape[0] for g in gs) #Sum of edges 2m*#img
+    N=gs[0].shape[0]
+    M=gs[1].shape[0]
+    print(N)
+    print(M)
+    adj = np.zeros([N,N])
+    src = np.zeros([M])
+    tgt = np.zeros([M])
+    Msrc = np.zeros([N,M])
+    Mtgt = np.zeros([N,M])
+    Mgraph = np.zeros([N,G])
+    h = np.concatenate([g[0] for g in gs])
+    
+    n_acc = 0
+    m_acc = 0
+    #for g_idx, g in enumerate(gs):
+    n = g[0].shape[0]
+    m = g[1].shape[0]
+    #print(gs[1])
+    print(src.shape)
+        
+    for e,(s,t) in enumerate(gs[1]):
+        adj[int(n_acc+s),int(n_acc+t)] = 1
+        adj[int(n_acc+t),int(n_acc+s)] = 1
+        
+        print(int(m_acc+e))
+        src[int(m_acc+e)] = n_acc+s
+        tgt[int(m_acc+e)] = n_acc+t
+            
+        Msrc[int(n_acc+s),int(m_acc+e)] = 1
+        Mtgt[int(n_acc+t),int(m_acc+e)] = 1
+            
+    Mgraph[int(n_acc):int(n_acc+n),0] = 1
+        
+    #n_acc += n
+    #m_acc += m
     return (
         h.astype(NP_TORCH_FLOAT_DTYPE),
         adj.astype(NP_TORCH_FLOAT_DTYPE),
@@ -305,7 +354,10 @@ def train(model, optimiser, graphs, labels, train_idx, use_cuda, batch_size=1, d
         te = time.time()
         y = model(h,adj,src,tgt,Msrc,Mtgt,Mgraph)
         tf = time.time()
-        loss = F.cross_entropy(input=y,target=batch_labels)
+        y.shape
+        batch_labels.shape
+        #loss = F.cross_entropy(input=y,target=batch_labels)
+        loss = F.l1_loss(input=y,target=batch_labels)
         
         pred = torch.argmax(y,dim=1).detach().cpu().numpy()
         acc = np.sum((pred==labels[batch_indexes]).astype(float)) / batch_labels.shape[0]
@@ -343,7 +395,95 @@ def train(model, optimiser, graphs, labels, train_idx, use_cuda, batch_size=1, d
         
     return train_losses, train_accs
 
-def test(model, graphs, labels, indexes, use_cuda, desc="Test ", disable_tqdm=False):
+def train_(
+    model,
+    optimiser,
+    graphs,
+    labels,
+    use_cuda,
+    loss_function=nn.MSELoss(),
+    batch_size=1,
+    disable_tqdm=False,
+    profile=False):
+
+    train_losses = []
+    train_accs = []
+    
+    #loss_function = nn.MSELoss()
+    #indexes = train_idx[np.random.permutation(len(train_idx))]
+    #labels=np.vectorize(lambda ind:dataset[ind],otypes=[object])(train_idx)
+    pyt_labels = torch.tensor(labels.reshape(-1,1),dtype=torch.float32)
+    
+    if use_cuda:
+        pyt_labels = pyt_labels.cuda()
+    
+    for b in tqdm(range(0,len(labels),batch_size), total=len(labels)/batch_size, desc="Instances ", disable=disable_tqdm):
+        ta = time.time()
+        optimiser.zero_grad()
+        
+        #batch_indexes = indexes[b:b+batch_size]
+        
+        batch_labels = pyt_labels
+        tb = time.time()
+        h,adj,src,tgt,Msrc,Mtgt,Mgraph = batch_graphs(graphs)
+        tc = time.time()
+        h,adj,src,tgt,Msrc,Mtgt,Mgraph = map(torch.from_numpy,(h,adj,src,tgt,Msrc,Mtgt,Mgraph))
+        td = time.time()
+        if use_cuda:
+            h,adj,src,tgt,Msrc,Mtgt,Mgraph = map(to_cuda,(h,adj,src,tgt,Msrc,Mtgt,Mgraph))
+        te = time.time()
+        y = model(h,adj,src,tgt,Msrc,Mtgt,Mgraph)
+        tf = time.time()
+        
+
+        loss = torch.tensor([0], dtype=torch.float).cuda()
+        #loss = F.l1_loss(input=y,target=batch_labels)
+        #loss = F.mse_loss(input=y.cuda(),target=batch_labels.cuda())
+        #loss = F.nll_loss(input=y.cuda(),target=batch_labels.cuda())
+
+        #loss_function = nn.MSELoss()
+        loss = loss_function(y, batch_labels)
+        
+        
+        pred=y.detach().cpu().numpy()
+#
+        #
+        acc=np.sum((pred-batch_labels.cpu().numpy())**2) / batch_labels.shape[0]
+        mode = sp.stats.mode(pred)
+        tg = time.time()
+        
+        tqdm.write(
+              "{loss:.4f}\t{acc:.2f}%\t{mode} (x{modecount})".format(
+                  loss=loss.item(),
+                  acc=100*acc,
+                  mode=mode[0][0],
+                  modecount=mode[1][0],
+              )
+        )
+        
+        th = time.time()
+        loss.backward()
+        optimiser.step()
+        
+        train_losses.append(loss.detach().cpu().item())
+        train_accs.append(acc)
+        if profile:
+            ti = time.time()
+            
+            tt = ti-ta
+            tqdm.write("zg {zg:.2f}% bg {bg:.2f}% tt {tt:.2f}% tc {tc:.2f}% mo {mo:.2f}% me {me:.2f}% bk {bk:.2f}%".format(
+                    zg=100*(tb-ta)/tt,
+                    bg=100*(tc-tb)/tt,
+                    tt=100*(td-tc)/tt,
+                    tc=100*(te-td)/tt,
+                    mo=100*(tf-te)/tt,
+                    me=100*(tg-tf)/tt,
+                    bk=100*(ti-th)/tt,
+                    ))
+        
+    return train_losses, train_accs
+
+def test(model, graphs, labels, use_cuda, desc="Test ", disable_tqdm=False):
     test_accs = []
     for i in tqdm(range(len(indexes)), total=len(indexes), desc=desc, disable=disable_tqdm):
         with torch.no_grad():
@@ -362,6 +502,37 @@ def test(model, graphs, labels, indexes, use_cuda, desc="Test ", disable_tqdm=Fa
             
             pred = torch.argmax(y,dim=1).detach().cpu().numpy()
             acc = np.sum((pred==batch_labels).astype(float)) / batch_labels.shape[0]
+            
+            test_accs.append(acc)
+    return test_accs
+
+def test_(model,
+            graphs,
+             labels,
+             use_cuda,
+             desc="Test ",
+             disable_tqdm=False):
+    test_accs = []
+    for i in tqdm(range(len(labels)), total=len(labels), desc=desc, disable=disable_tqdm):
+        with torch.no_grad():
+            #idx = indexes[i]
+        
+            #batch_labels = labels[idx:idx+1]
+            batch_labels = labels
+            #pyt_labels = torch.from_numpy(batch_labels,dtype=torch.long)
+            pyt_labels = torch.tensor(labels.reshape(-1,1),dtype=torch.float32)
+            
+            h,adj,src,tgt,Msrc,Mtgt,Mgraph = batch_graphs(graphs)
+            h,adj,src,tgt,Msrc,Mtgt,Mgraph = map(torch.from_numpy,(h,adj,src,tgt,Msrc,Mtgt,Mgraph))
+            
+            if use_cuda:
+                h,adj,src,tgt,Msrc,Mtgt,Mgraph,pyt_labels = map(to_cuda,(h,adj,src,tgt,Msrc,Mtgt,Mgraph,pyt_labels))
+            
+            y = model(h,adj,src,tgt,Msrc,Mtgt,Mgraph)
+            
+            pred = torch.argmax(y,dim=1).detach().cpu().numpy()
+            #acc = np.sum((pred==batch_labels).astype(float)) / batch_labels.shape[0]
+            acc=np.sum((pred-pyt_labels.cpu().numpy())**2) / batch_labels.shape[0]
             
             test_accs.append(acc)
     return test_accs
