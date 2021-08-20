@@ -12,6 +12,7 @@ import argparse
 from skimage.color import rgb2hsv
 from skimage.morphology import convex_hull_image
 from sklearn.decomposition import PCA
+from skimage.transform import rotate
 import networkx as nx
 from skimage import measure
 from skimage import color
@@ -26,6 +27,7 @@ def toLCh(img):
     Lch=np.concatenate((L.reshape(L.shape[0],L.shape[1],1),
                         C.reshape(L.shape[0],L.shape[1],1),
                         h.reshape(L.shape[0],L.shape[1],1)),axis=2)
+    return Lch
 
 def maxmod(p,th=5000):
   for i in range(len(p[0][:])):
@@ -233,7 +235,7 @@ def get_SD_by_format(f,ind1,ind2,j):
 v_get_SD_by_format=np.vectorize(pyfunc=get_SD_by_format,signature='(x,y,z),(a),(b),(j)->(q,w)')
 
 def pack_segments(DIRID,f,i):
-    indx=np.where(f[:,:,9]==i)
+    indx=np.where(f[:,:,12]==i)
     SD_rgb_hsv_lab=v_get_SD_by_format(f,indx[0],indx[1],np.arange(1,13).reshape(-1,3))
     DIRID[i]['rgb_mean']=SD_rgb_hsv_lab[0,0]
     DIRID[i]['rgb_std']=SD_rgb_hsv_lab[0,1]
@@ -280,9 +282,12 @@ def get_Statistical_Descriptors(img,mask,n_segments=800):
     v_pack_segments(DIRID,f,RID)
     return DIRID
 
-def get_Statistical_Descriptors_(img,mask,n_segments=800):
+def get_Statistical_Descriptors_(img,mask,n_segments=800,angle=0):
     lum = np.mean(mask,axis=2).astype(int)
     mask1=lum>0
+
+    img=rotate(img,angle)
+    mask1=rotate(mask1,angle)
 
     m_slic = slic(image=img, n_segments=n_segments,sigma=5,slic_zero=True,mask=mask1)
     
@@ -319,15 +324,17 @@ def assemble_mask(xywh,img,ROI):
     mask[marco[1]:(marco[1]+marco[3]),marco[0]:(marco[0]+marco[2]),:]=ROI
     return mask
 
-def get_graph_from_image(image,mask,desired_nodes=20):
-    SD,segments=get_Statistical_Descriptors_(image,mask,n_segments=desired_nodes)
+def get_graph_from_image(image,mask,desired_nodes=20,angle=0):
+    SD,segments=get_Statistical_Descriptors_(image,mask,n_segments=desired_nodes,angle=angle)
     nodes=np.array(list(SD))[:]
     node_features=np.vectorize(lambda SD,node:SD[node])(SD,nodes)
     G = nx.Graph()
     for node in nodes[1:]:
         data=np.array(list(node_features[node].items()))[:,1]
+        #print(data.shape)
         #print(data)
-        afeatures=np.concatenate((np.concatenate(data[:12]),data[12:]))
+        afeatures=np.concatenate((np.concatenate(data[:19]),data[19:]))
+        #print(afeatures)
         n_features=afeatures.shape[0]
         G.add_node(node-1, features = afeatures)
     
