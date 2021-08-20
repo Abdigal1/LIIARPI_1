@@ -284,7 +284,7 @@ def get_Statistical_Descriptors_(img,mask,n_segments=800):
     lum = np.mean(mask,axis=2).astype(int)
     mask1=lum>0
 
-    m_slic = slic(img, n_segments=n_segments,sigma=5,slic_zero=True,mask=mask1)
+    m_slic = slic(image=img, n_segments=n_segments,sigma=5,slic_zero=True,mask=mask1)
     
     RID=np.unique(m_slic.flatten())
     f=np.zeros((img.shape[0],img.shape[1],3+3+3+3+1))

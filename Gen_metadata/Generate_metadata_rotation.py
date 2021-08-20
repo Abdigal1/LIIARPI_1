@@ -9,6 +9,7 @@ from skimage import color
 import matplotlib.pyplot as plt
 from skimage.segmentation import slic
 from skimage import morphology
+from skimage.transform import rotate
 import networkx as nx
 import json
 
@@ -40,6 +41,8 @@ for name in imgnames:
 #           lum = np.mean(mask,axis=2).astype(int)
 #           mask1=lum > 0
         for ang in np.arange(0,360,360/6):
+            img=rotate(img,ang)
+            mask=rotate(mask,ang)
             SD,G,h,edges=get_graph_from_image(img,mask,desired_nodes=20)
 
             #np.save(dir_meta+str(ang)+"_"+name.split('.')[0]+'.npy',np.array([h,edges]))
