@@ -38,12 +38,17 @@ for name in imgnames:
 #           lum = np.mean(mask,axis=2).astype(int)
 #           mask1=lum > 0
         SD,G,h,edges=get_graph_from_image(img,mask,desired_nodes=20)
+        
+        #FOR Pytorch
+        np.save(dir_meta+name.split('.')[0]+'.npy',np.array([h,edges]))
+        nx.readwrite.adjlist.write_adjlist(G,dir_meta+name.split('.')[0])
+
+        #FOR Sckit
         #Sampled=sample_central(SD,G,num=5,maxdeg=3)
         #NSD={}
         #for ID in Sampled:
         #    NSD[ID]=SD[ID]
-        np.save(dir_meta+name.split('.')[0]+'.npy',np.array([h,edges]))
-        nx.readwrite.adjlist.write_adjlist(G,dir_meta+name.split('.')[0])
+
         print("done")
     except Exception as e:
     #    exc_type, exc_obj, exc_tb = sys.exc_info()

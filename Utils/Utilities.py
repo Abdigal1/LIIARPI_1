@@ -16,6 +16,17 @@ import networkx as nx
 from skimage import measure
 from skimage import color
 
+def toLCh(img):
+    lab=color.rgb2lab(img)
+    L=lab[:,:,0]
+    a=lab[:,:,1]
+    b=lab[:,:,2]
+    C=(a**2+b**2)**0.5
+    h=np.arctan2(b,a)
+    Lch=np.concatenate((L.reshape(L.shape[0],L.shape[1],1),
+                        C.reshape(L.shape[0],L.shape[1],1),
+                        h.reshape(L.shape[0],L.shape[1],1)),axis=2)
+
 def maxmod(p,th=5000):
   for i in range(len(p[0][:])):
     if p[0][-i]>th:
@@ -223,7 +234,7 @@ v_get_SD_by_format=np.vectorize(pyfunc=get_SD_by_format,signature='(x,y,z),(a),(
 
 def pack_segments(DIRID,f,i):
     indx=np.where(f[:,:,9]==i)
-    SD_rgb_hsv_lab=v_get_SD_by_format(f,indx[0],indx[1],np.arange(1,10).reshape(3,3))
+    SD_rgb_hsv_lab=v_get_SD_by_format(f,indx[0],indx[1],np.arange(1,13).reshape(-1,3))
     DIRID[i]['rgb_mean']=SD_rgb_hsv_lab[0,0]
     DIRID[i]['rgb_std']=SD_rgb_hsv_lab[0,1]
     DIRID[i]['rgb_per']=SD_rgb_hsv_lab[0,2]
@@ -236,6 +247,9 @@ def pack_segments(DIRID,f,i):
     DIRID[i]['lab_std']=SD_rgb_hsv_lab[2,1]
     DIRID[i]['lab_per']=SD_rgb_hsv_lab[2,2]
     DIRID[i]['lab_mo']=SD_rgb_hsv_lab[2,3]
+    DIRID[i]['lCh_std']=SD_rgb_hsv_lab[3,1]
+    DIRID[i]['lCh_per']=SD_rgb_hsv_lab[3,2]
+    DIRID[i]['lCh_mo']=SD_rgb_hsv_lab[3,3]
     #Descriptores espaciales--------------------------------------------
     DIRID[i]['x_mean']=np.mean(indx[0])
     DIRID[i]['x_std']=np.std(indx[0])
@@ -273,15 +287,18 @@ def get_Statistical_Descriptors_(img,mask,n_segments=800):
     m_slic = slic(img, n_segments=n_segments,sigma=5,slic_zero=True,mask=mask1)
     
     RID=np.unique(m_slic.flatten())
-    f=np.zeros((img.shape[0],img.shape[1],3+3+3+1))
+    f=np.zeros((img.shape[0],img.shape[1],3+3+3+3+1))
     f[:,:,0:3]=img[:,:,0:3]
     f[:,:,3:6]=color.rgb2hsv(img)[:,:,0:3]
     f[:,:,6:9]=color.rgb2lab(img)[:,:,0:3]
-    f[:,:,9]=m_slic
+    LCh=toLCh(img)
+    f[:,:,9:12]=LCh[:,:,0:3]
+    f[:,:,12]=m_slic
 
     DIRID={int(i):{'rgb_mean':np.zeros((3)),'rgb_std':np.zeros((3)),'rgb_per':np.zeros((3)),'rgb_mo':np.zeros((3)),
                    'lab_mean':np.zeros((3)),'lab_std':np.zeros((3)),'lab_per':np.zeros((3)),'lab_mo':np.zeros((3)),
                    'hsv_mean':np.zeros((3)),'hsv_std':np.zeros((3)),'hsv_per':np.zeros((3)),'hsv_mo':np.zeros((3)),
+                   'LCh_mean':np.zeros((3)),'LCh_std':np.zeros((3)),'LCh_per':np.zeros((3)),'LCh_mo':np.zeros((3))
                   } for i in RID}
 
     v_pack_segments(DIRID,f,RID)

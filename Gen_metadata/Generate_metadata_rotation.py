@@ -17,8 +17,8 @@ lines=f1.readlines()
 linesn=np.array(lines)
 linesn=np.delete(lines,np.where(linesn=="\n"))
 linesn=linesn.reshape(-1,3)
-print(linesn[103:])
-linesn=linesn[103:]
+#print(linesn[103:])
+#linesn=linesn[103:]
 
 linesnc=v_replace_err(linesn)
 linesnc=np.vectorize(pyfunc=lambda x:np.array([x[0].split('\n')[0]]),signature="(n)->(m)")(linesnc.reshape(-1,1)).reshape(-1,3)
@@ -30,7 +30,7 @@ xywh=xywh.reshape(-1,4).astype(int)+1
 
 dir_origin=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Imagenes_originales\\'
 dir_ROI=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Sem_Auto\\eye_'
-dir_meta=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Metadata_V6G\\'
+dir_meta=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Metadata_V7G_sckit\\'
 #FOR
 for name in imgnames:
     try:
@@ -41,13 +41,25 @@ for name in imgnames:
 #           mask1=lum > 0
         for ang in np.arange(0,360,360/6):
             SD,G,h,edges=get_graph_from_image(img,mask,desired_nodes=20)
-            np.save(dir_meta+str(ang)+"_"+name.split('.')[0]+'.npy',np.array([h,edges]))
-            nx.readwrite.adjlist.write_adjlist(G,dir_meta+name.split('.')[0])
+
+            #np.save(dir_meta+str(ang)+"_"+name.split('.')[0]+'.npy',np.array([h,edges]))
+            #nx.readwrite.adjlist.write_adjlist(G,dir_meta+name.split('.')[0])
+
+            #FOR Pytorch
+            #np.save(dir_meta+name.split('.')[0]+'.npy',np.array([h,edges]))
+            #nx.readwrite.adjlist.write_adjlist(G,dir_meta+name.split('.')[0])
+
+            #FOR Sckit
+            Sampled=sample_central(SD,G,num=5,maxdeg=3)
+            NSD={}
+            for ID in Sampled:
+                NSD[ID]=SD[ID]
+
 
             print("done "+str(ang)+"_"+name.split('.')[0]+'.npy')
     except Exception as e:
-    #    exc_type, exc_obj, exc_tb = sys.exc_info()
-    #    print(exc_type, exc_tb.tb_lineno)
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        print(exc_type, exc_tb.tb_lineno)
         print(name)
         print(e)
 
