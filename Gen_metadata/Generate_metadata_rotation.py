@@ -31,7 +31,8 @@ xywh=xywh.reshape(-1,4).astype(int)+1
 
 dir_origin=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Imagenes_originales\\'
 dir_ROI=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Sem_Auto\\eye_'
-dir_meta=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Metadata_V7G_sckit\\'
+dir_meta_sk=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Metadata_V7G_sckit\\'
+dir_meta_pt=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Metadata_V7G_pytorch\\'
 #FOR
 for name in imgnames:
     try:
@@ -48,8 +49,8 @@ for name in imgnames:
             #nx.readwrite.adjlist.write_adjlist(G,dir_meta+name.split('.')[0])
 
             #FOR Pytorch
-            #np.save(dir_meta+name.split('.')[0]+'.npy',np.array([h,edges]))
-            #nx.readwrite.adjlist.write_adjlist(G,dir_meta+name.split('.')[0])
+            np.save(dir_meta_pt+str(ang)+"_"+name.split('.')[0]+'.npy',np.array([h,edges]))
+            nx.readwrite.adjlist.write_adjlist(G,dir_meta_pt+str(ang)+"_"+name.split('.')[0])
 
             #FOR Sckit
             Sampled=sample_central(SD,G,num=5,maxdeg=3)
@@ -58,6 +59,7 @@ for name in imgnames:
                 NSD[ID]=SD[ID]
 
 
+            np.save(dir_meta_sk+str(ang)+"_"+name.split('.')[0]+'.npy',NSD)
             print("done "+str(ang)+"_"+name.split('.')[0]+'.npy')
     except Exception as e:
         exc_type, exc_obj, exc_tb = sys.exc_info()
