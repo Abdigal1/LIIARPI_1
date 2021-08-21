@@ -1,136 +1,155 @@
-from tqdm import tqdm
-import fire
-
-import copy
-import time
-
-import numpy as np
-import scipy as sp
-import multiprocessing
-
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-from torchvision.datasets import MNIST
+from sklearn.model_selection import KFold
+import numpy as np
+import copy
 
-from model import GAT_ANE
-import util
+import os
+import sys
+import pathlib
+pth=str(pathlib.Path().absolute())
 
-to_cuda = util.to_cuda
+#Utilities
+sys.path.append(pth)
+from model_An import *
+from util import *
+from Data_loader_image import *
+
+#Base de datos
+#sys.path.append()
+#data=("/").join(pth.split("/")[:-2])+"/Data_Base/Metada_V6G_p1"
+data=("/").join(pth.split("/")[:-2])+"/Data_Base/Metada_V6G"
+data_arg=("/").join(pth.split("/")[:-2])+"/Data_Base"
+
+to_cuda = to_cuda
 
 def train_model(
+    dataset,
         epochs,
         batch_size,
         use_cuda,
-        dset_folder,
+    folds=5,
         disable_tqdm=False,
         ):
     print("Reading dataset")
-    #dset = MNIST(dset_folder,download=True) #Dataset
-    imgs = dset.data.unsqueeze(-1).numpy().astype(np.float64)
-    labels = dset.targets.numpy()
-    train_idx, valid_idx = map(np.array,util.split_dataset(labels))
-    
-    print("Processing images into graphs...", end="")
-    ptime = time.time()
-    with multiprocessing.Pool() as p:
-        graphs = np.array(p.map(util.get_graph_from_image, imgs))
-    del imgs
-    ptime = time.time() - ptime
-    print(" Took {ptime}s".format(ptime=ptime))
 
+    ind=np.arange(0,len(dataset))
     
+    #INSIDE K-FOLD
+    results={}
+    for fold in range(folds):
+        #generate train-test
+        print("fold"+str(fold))
+        
+        i=fold
+
+        ind=np.arange(0,len(dataset))
+        indexes=ind[np.random.permutation(len(dataset))]
+        L=len(dataset)
+        test_idx=indexes[int(i*L/5):int((i+1)*L/5)]
+        train_idx=np.delete(indexes,np.arange(int(i*L/5),int((i+1)*L/5)))
+        
+        model = GAT_ANE_(41,1)
+        if use_cuda:
+            model = model.cuda()
     
+        opt = torch.optim.Adam(model.parameters())
     
+        best_valid_acc = 0.
+        best_model = copy.deepcopy(model)
     
-    model_args = []
-    model_kwargs = {}
-    model = GAT_ANE(num_features=util.NUM_FEATURES, num_classes=util.NUM_CLASSES)
-    if use_cuda:
-        model = model.cuda()
+        last_epoch_train_loss = 0.
+        last_epoch_train_acc = 0.
+        last_epoch_valid_acc = 0.
     
-    opt = torch.optim.Adam(model.parameters())
-    
-    best_valid_acc = 0.
-    best_model = copy.deepcopy(model)
-    
-    last_epoch_train_loss = 0.
-    last_epoch_train_acc = 0.
-    last_epoch_valid_acc = 0.
-    
-    interrupted = False
-    for e in tqdm(range(epochs), total=epochs, desc="Epoch ", disable=disable_tqdm,):
-        try:
-            train_losses, train_accs = util.train(model, opt, graphs, labels, train_idx, batch_size=batch_size, use_cuda=use_cuda, disable_tqdm=disable_tqdm,)
+        interrupted = False
+        
+        train_dat=np.vectorize(lambda ind:dataset[ind],otypes=[object])(train_idx)
+        train_graph=np.vectorize(lambda b:b["image_graph"])(train_dat)
+        train_label=np.vectorize(lambda b:b["landmarks"])(train_dat)
+        test_dat=np.vectorize(lambda ind:dataset[ind],otypes=[object])(test_idx)
+        test_graph=np.vectorize(lambda b:b["image_graph"])(test_dat)
+        test_label=np.vectorize(lambda b:b["landmarks"])(test_dat)
+        
+        loss_function = nn.MSELoss()
+        for e in tqdm(range(epochs), total=epochs, desc="Epoch ", disable=disable_tqdm,):
+            try:
+                #train_losses, train_accs = train_(model, opt, train_graph, train_label,loss_function,
+                                                  #batch_size=batch_size, use_cuda=use_cuda, disable_tqdm=disable_tqdm,)
+                train_losses, train_accs =train_(model=model,
+                                                 optimiser=opt,
+                                                 graphs=train_graph,
+                                                 labels=train_label,
+                                                 use_cuda=use_cuda,
+                                                 loss_function=nn.MSELoss(),
+                                                 #batch_size=1,
+                                                 batch_size=batch_size,
+                                                 disable_tqdm=disable_tqdm,
+                                                 profile=False)
             
-            last_epoch_train_loss = np.mean(train_losses)
-            last_epoch_train_acc = 100*np.mean(train_accs)
-        except KeyboardInterrupt:
-            print("Training interrupted!")
-            interrupted = True
+                last_epoch_train_loss = np.mean(train_losses)
+                last_epoch_train_acc = 100*np.mean(train_accs)
+            except KeyboardInterrupt:
+                print("Training interrupted!")
+                interrupted = True
         
-        valid_accs = util.test(model,graphs,labels,valid_idx,use_cuda,desc="Validation ", disable_tqdm=disable_tqdm,)
+            #valid_accs = test_(model,test_graph,test_label,use_cuda,desc="Validation ", disable_tqdm=disable_tqdm,)
+            valid_accs = test_(model=model,
+                               graphs=test_graph,
+                               labels=test_label,
+                               use_cuda=use_cuda,
+                               batch_size=int(32),
+                               desc="Test ",
+                               disable_tqdm=False)
                 
-        last_epoch_valid_acc = 100*np.mean(valid_accs)
+            last_epoch_valid_acc = 100*np.mean(valid_accs)
         
-        if last_epoch_valid_acc>best_valid_acc:
-            best_valid_acc = last_epoch_valid_acc
-            best_model = copy.deepcopy(model)
+            if last_epoch_valid_acc>best_valid_acc:
+                best_valid_acc = last_epoch_valid_acc
+                best_model = copy.deepcopy(model)
         
-        tqdm.write("EPOCH SUMMARY {loss:.4f} {t_acc:.2f}% {v_acc:.2f}%".format(loss=last_epoch_train_loss, t_acc=last_epoch_train_acc, v_acc=last_epoch_valid_acc))
+            tqdm.write("EPOCH SUMMARY {loss:.4f} {t_acc:.2f}% {v_acc:.2f}%".format(loss=last_epoch_train_loss, t_acc=last_epoch_train_acc, v_acc=last_epoch_valid_acc))
         
-        if interrupted:
-            break
+            if interrupted:
+                break
     
-    util.save_model("best",best_model)
-    util.save_model("last",model)
+        results[fold]={"train_acc":train_accs,"train_loss":train_losses,"valid_acc":valid_accs}
+        save_model("best"+str(fold),best_model)
+        save_model("last"+str(fold),model)
+    np.save("results"+'.npy',results)
+    return results
 
 
-def test_model(
-        use_cuda,
-        dset_folder,
-        disable_tqdm=False,
-        ):
-    best_model = GAT_ANE(num_features=util.NUM_FEATURES, num_classes=util.NUM_CLASSES)
-    util.load_model("best",best_model)
-    if use_cuda:
-        best_model = best_model.cuda()
-    
-    test_dset = MNIST(dset_folder,train=False,download=True)
-    test_imgs = test_dset.data.unsqueeze(-1).numpy().astype(np.float64)
-    with multiprocessing.Pool() as p:
-        test_graphs = np.array(p.map(util.get_graph_from_image, test_imgs))
-    del test_imgs
-    test_labels = test_dset.targets.numpy()
-    
-    test_accs = util.test(best_model, test_graphs, test_labels, list(range(len(test_labels))), use_cuda, desc="Test ", disable_tqdm=disable_tqdm,)
-    test_acc = 100*np.mean(test_accs)
-    print("TEST RESULTS: {acc:.2f}%".format(acc=test_acc))
 
 def main(
-        train:bool=False,
+        train:bool=True,
         test:bool=False,
         epochs:int=100,
         batch_size:int=32,
         use_cuda:bool=True,
         disable_tqdm:bool=False,
-        dset_folder:str = "./mnist"
+        Data_version = "Metadata_V6G",
+        data_arg=data_arg
         ):
     use_cuda = use_cuda and torch.cuda.is_available()
+
+    dataset=Rotated_Dataset(data_arg,Data_version)
+
     if train:
-        train_model(
-                epochs = epochs,
-                batch_size = batch_size,
-                use_cuda = use_cuda,
-                dset_folder = dset_folder,
-                disable_tqdm = disable_tqdm,
+
+        results=train_model(dataset,
+                epochs=35,
+                batch_size=int(100),
+                use_cuda=True,
+                folds=5,
+                disable_tqdm=False,
                 )
-    if test:
-        test_model(
-                use_cuda=use_cuda,
-                dset_folder = dset_folder,
-                disable_tqdm = disable_tqdm,
-                )
+    #if test:
+    #    test_model(
+    #            use_cuda=use_cuda,
+    #            dset_folder = dset_folder,
+    #            disable_tqdm = disable_tqdm,
+    #            )
 
 if __name__ == "__main__":
     fire.Fire(main)
