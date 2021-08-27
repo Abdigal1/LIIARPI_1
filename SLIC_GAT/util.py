@@ -455,7 +455,7 @@ def train_(
         tqdm.write(
               "{loss:.4f}\t{acc:.2f}%\t{mode} (x{modecount})".format(
                   loss=loss.item(),
-                  acc=100*acc,
+                  acc=acc,
                   mode=mode[0][0],
                   modecount=mode[1][0],
               )
@@ -531,15 +531,13 @@ def test_(model,
                 h,adj,src,tgt,Msrc,Mtgt,Mgraph,pyt_labels = map(to_cuda,(h,adj,src,tgt,Msrc,Mtgt,Mgraph,pyt_labels))
             
             y = model(h,adj,src,tgt,Msrc,Mtgt,Mgraph)
-            #print(y.shape)
-            
-            #pred = torch.argmax(y,dim=1).detach().cpu().numpy()
             pred=y.detach().cpu().numpy()
-            #print(pred.shape)
-            #acc = np.sum((pred==batch_labels).astype(float)) / batch_labels.shape[0]
-            acc=np.sum((pred-pyt_labels.cpu().numpy())**2) / batch_labels.shape[0]
+
+            acc=np.sum((pred-pyt_labels.cpu().numpy())**2) / pyt_labels.cpu().numpy().shape[0]
+           #acc=np.sum((pred-batch_labels.cpu().numpy())**2) / batch_labels.shape[0]
             
             test_accs.append(acc)
+            #test_accs.append(loss.detach().cpu().item())
     return test_accs
 
 def main_plot(dset_folder,save):
