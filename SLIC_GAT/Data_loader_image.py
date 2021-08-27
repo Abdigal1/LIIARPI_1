@@ -169,8 +169,11 @@ class Rotated_Dataset(torch.utils.data.Dataset):
 
             #Broadcast y
             y=np.zeros(name_grph_data.shape).reshape(-1,)
+            #print(iy)
             #np.vectorize(self.build_tar,signature="(i),(),(j),(k),(l)->()")(y,raw_data,raw_data,name_grph_data,iy)
             name_grph_data=np.vectorize(lambda dat:('.').join(dat.split('.')[:-1]))(name_grph_data)
+            #print(npr_names)
+            #print(name_grph_data)
             t=np.vectorize(self.build_tar,signature="(i),(),(j)->(w)")(npr_names,name_grph_data,iy)
             t=np.hstack((grph_data.reshape(1,-1).T,t))
 
@@ -180,7 +183,7 @@ class Rotated_Dataset(torch.utils.data.Dataset):
 
       #def build_tar(self,tar,dat,names,graphs,y):
       def build_tar(self,names,graphs,y):
-            #tar[dat==graphs]=tar[dat==graphs]+y[dat==names]
+            #print(graphs)
             return np.array([graphs,str(y[graphs==names][0])])
 
       def __len__(self):
@@ -196,7 +199,7 @@ class Rotated_Dataset(torch.utils.data.Dataset):
             img_name = os.path.join(self.root_dir,self.landmarks_frame[idx, 0])
             data_name=os.path.join(self.root_dir,self.medata_dir,self.landmarks_frame[idx, 0])
             data=np.load(data_name,allow_pickle=True)
-            data=np.array(sample_central_simple(data[0],data[1],5),dtype=object)
+            #data=np.array(sample_central_simple(data[0],data[1],5),dtype=object)
 
             #data=batch_graphs_(data)
             #data={'h':data[0],'adj':data[1],'src':data[2],'tgt':data[3],'Msrc':data[4],'Mtgt':data[5],'Mgraph':data[6]}

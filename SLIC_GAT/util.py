@@ -423,9 +423,9 @@ def train_(
         
         #batch_indexes = indexes[b:b+batch_size]
         
-        batch_labels = pyt_labels
+        batch_labels = pyt_labels[b:b+batch_size]
         tb = time.time()
-        h,adj,src,tgt,Msrc,Mtgt,Mgraph = batch_graphs(graphs)
+        h,adj,src,tgt,Msrc,Mtgt,Mgraph = batch_graphs(graphs[b:b+batch_size])
         tc = time.time()
         h,adj,src,tgt,Msrc,Mtgt,Mgraph = map(torch.from_numpy,(h,adj,src,tgt,Msrc,Mtgt,Mgraph))
         td = time.time()
@@ -455,7 +455,7 @@ def train_(
         tqdm.write(
               "{loss:.4f}\t{acc:.2f}%\t{mode} (x{modecount})".format(
                   loss=loss.item(),
-                  acc=100*acc,
+                  acc=acc,
                   mode=mode[0][0],
                   modecount=mode[1][0],
               )
@@ -511,9 +511,11 @@ def test_(model,
              labels,
              use_cuda,
              desc="Test ",
+             batch_size=1,
              disable_tqdm=False):
     test_accs = []
-    for i in tqdm(range(len(labels)), total=len(labels), desc=desc, disable=disable_tqdm):
+    #for i in tqdm(range(len(labels)), total=len(labels), desc=desc, disable=disable_tqdm):
+    for b in tqdm(range(0,len(labels),batch_size), total=len(labels)/batch_size, desc=desc, disable=disable_tqdm):
         with torch.no_grad():
             #idx = indexes[i]
         
@@ -521,20 +523,21 @@ def test_(model,
             batch_labels = labels
             #pyt_labels = torch.from_numpy(batch_labels,dtype=torch.long)
             pyt_labels = torch.tensor(labels.reshape(-1,1),dtype=torch.float32)
-            
-            h,adj,src,tgt,Msrc,Mtgt,Mgraph = batch_graphs(graphs)
+            pyt_labels=pyt_labels[b:b+batch_size]
+            h,adj,src,tgt,Msrc,Mtgt,Mgraph = batch_graphs(graphs[b:b+batch_size])
             h,adj,src,tgt,Msrc,Mtgt,Mgraph = map(torch.from_numpy,(h,adj,src,tgt,Msrc,Mtgt,Mgraph))
             
             if use_cuda:
                 h,adj,src,tgt,Msrc,Mtgt,Mgraph,pyt_labels = map(to_cuda,(h,adj,src,tgt,Msrc,Mtgt,Mgraph,pyt_labels))
             
             y = model(h,adj,src,tgt,Msrc,Mtgt,Mgraph)
-            
-            pred = torch.argmax(y,dim=1).detach().cpu().numpy()
-            #acc = np.sum((pred==batch_labels).astype(float)) / batch_labels.shape[0]
-            acc=np.sum((pred-pyt_labels.cpu().numpy())**2) / batch_labels.shape[0]
+            pred=y.detach().cpu().numpy()
+
+            acc=np.sum((pred-pyt_labels.cpu().numpy())**2) / pyt_labels.cpu().numpy().shape[0]
+           #acc=np.sum((pred-batch_labels.cpu().numpy())**2) / batch_labels.shape[0]
             
             test_accs.append(acc)
+            #test_accs.append(loss.detach().cpu().item())
     return test_accs
 
 def main_plot(dset_folder,save):
