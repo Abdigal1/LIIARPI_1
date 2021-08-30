@@ -169,15 +169,13 @@ class Rotated_Dataset(torch.utils.data.Dataset):
 
             #Broadcast y
             y=np.zeros(name_grph_data.shape).reshape(-1,)
-            #print(iy)
-            #np.vectorize(self.build_tar,signature="(i),(),(j),(k),(l)->()")(y,raw_data,raw_data,name_grph_data,iy)
             name_grph_data=np.vectorize(lambda dat:('.').join(dat.split('.')[:-1]))(name_grph_data)
-            #print(npr_names)
-            #print(name_grph_data)
             t=np.vectorize(self.build_tar,signature="(i),(),(j)->(w)")(npr_names,name_grph_data,iy)
             t=np.hstack((grph_data.reshape(1,-1).T,t))
 
             self.landmarks_frame=np.delete(t,1,axis=1)
+            #Borrar 0's
+            self.landmarks_frame=np.delete(self.landmarks_frame,np.where(self.landmarks_frame[:,1].astype(float)==0),axis=0)
             
             self.transform = transform
 

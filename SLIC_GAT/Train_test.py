@@ -32,6 +32,9 @@ def train_model(
         disable_tqdm=False,
         ):
     print("Reading dataset")
+
+    sub_dir="Mhh_n_0/"
+    print(os.path.join(os.path.dirname(os.path.realpath(__file__)),sub_dir))
     #dset = MNIST(dset_folder,download=True)
     #DATASET
     #imgs = dset.data.unsqueeze(-1).numpy().astype(np.float64)
@@ -55,7 +58,7 @@ def train_model(
         test_idx=indexes[int(i*L/folds):int((i+1)*L/folds)]
         train_idx=np.delete(indexes,np.arange(int(i*L/folds),int((i+1)*L/folds)))
         
-        model = GAT_ANE_(62,1)
+        model = GAT_ANE_MHH(62,1)
         if use_cuda:
             model = model.cuda()
     
@@ -126,10 +129,10 @@ def train_model(
     
         last_results[fold]={"train_acc":train_accs,"train_loss":epoch_train,"valid_acc":epoch_test}
         results[fold]={"train_acc":last_epoch_train_acc,"train_loss":last_epoch_train_loss,"valid_acc":last_epoch_valid_acc}
-        save_model("best"+str(fold),best_model)
-        save_model("last"+str(fold),model)
-    np.save("results_10f_unsampled"+'.npy',results)
-    np.save("last_results_10f_unsampled"+'.npy',last_results)
+        save_model(os.path.join(os.path.dirname(os.path.realpath(__file__)),sub_dir)+"best"+str(fold),best_model)
+        save_model(os.path.join(os.path.dirname(os.path.realpath(__file__)),sub_dir)+"last"+str(fold),model)
+    np.save(os.path.join(os.path.dirname(os.path.realpath(__file__)),sub_dir)+"results_10f_unsampled_hh"+'.npy',results)
+    np.save(os.path.join(os.path.dirname(os.path.realpath(__file__)),sub_dir)+"last_results_10f_unsampled_hh"+'.npy',last_results)
     return results,last_results
 
 
@@ -151,10 +154,10 @@ def main(
     if train:
 
         results=train_model(dataset,
-                epochs=int(100),
-                batch_size=int(300),
+                epochs=int(120),
+                batch_size=int(250),
                 use_cuda=True,
-                folds=10,
+                folds=5,
                 disable_tqdm=False,
                 )
     #if test:
