@@ -140,11 +140,12 @@ class Dataset(torch.utils.data.Dataset):
             return sample
 
 class Rotated_Dataset(torch.utils.data.Dataset):
-      def __init__(self, root_dir,medata_dir,transform=None):
+      def __init__(self, root_dir,medata_dir,features=np.arange(0,62),transform=None):
             'Initialization'
             #directories
             self.root_dir = root_dir
             self.medata_dir=medata_dir
+            self.features=features
 
             #Read names
             #raw_data=np.array(os.listdir(root_dir+"\\Sem_Auto1"))
@@ -175,7 +176,9 @@ class Rotated_Dataset(torch.utils.data.Dataset):
 
             self.landmarks_frame=np.delete(t,1,axis=1)
             #Borrar 0's
-            self.landmarks_frame=np.delete(self.landmarks_frame,np.where(self.landmarks_frame[:,1].astype(float)==0),axis=0)
+            #self.landmarks_frame=np.delete(self.landmarks_frame,np.where(self.landmarks_frame[:,1].astype(float)==0),axis=0)
+            self.landmarks_frame=np.delete(self.landmarks_frame,np.where(self.landmarks_frame[:,1].astype(float)>20),axis=0)
+            self.landmarks_frame=np.delete(self.landmarks_frame,np.where(self.landmarks_frame[:,1].astype(float)<5),axis=0)
             
             self.transform = transform
 
@@ -197,10 +200,10 @@ class Rotated_Dataset(torch.utils.data.Dataset):
             img_name = os.path.join(self.root_dir,self.landmarks_frame[idx, 0])
             data_name=os.path.join(self.root_dir,self.medata_dir,self.landmarks_frame[idx, 0])
             data=np.load(data_name,allow_pickle=True)
-            #data=np.array(sample_central_simple(data[0],data[1],5),dtype=object)
+            #print(data)
+            data[0]=data[0][:,self.features]
 
-            #data=batch_graphs_(data)
-            #data={'h':data[0],'adj':data[1],'src':data[2],'tgt':data[3],'Msrc':data[4],'Mtgt':data[5],'Mgraph':data[6]}
+
             landmarks = self.landmarks_frame[idx, 1:]
             landmarks = np.array([landmarks])
 

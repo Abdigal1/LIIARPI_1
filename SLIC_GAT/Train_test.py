@@ -18,8 +18,8 @@ from Data_loader_image import *
 #Base de datos
 #sys.path.append()
 #data=("/").join(pth.split("/")[:-2])+"/Data_Base/Metada_V6G_p1"
-data=("/").join(pth.split("/")[:-2])+"/Data_Base/Metada_V6G"
-data_arg=("/").join(pth.split("/")[:-2])+"/Data_Base"
+data=("/").join(pth.split("/")[:-2])+"/lab/Data_Base/Metada_V6G"
+data_arg=("/").join(pth.split("/")[:-2])+"/lab/Data_Base"
 
 to_cuda = to_cuda
 
@@ -33,19 +33,15 @@ def train_model(
         ):
     print("Reading dataset")
 
-    sub_dir="Mhh_n_0/"
+    sub_dir="MMhh_Sel_L2/"
     print(os.path.join(os.path.dirname(os.path.realpath(__file__)),sub_dir))
-    #dset = MNIST(dset_folder,download=True)
-    #DATASET
-    #imgs = dset.data.unsqueeze(-1).numpy().astype(np.float64)
-    #labels = dset.targets.numpy()
-    
-    #train_idx, valid_idx = map(np.array,util.split_dataset(labels))
+
     ind=np.arange(0,len(dataset))
     
     #INSIDE K-FOLD
     last_results={}
     results={}
+    results_abs={}
     for fold in range(folds):
         #generate train-test
         print("fold "+str(fold+1))
@@ -58,7 +54,7 @@ def train_model(
         test_idx=indexes[int(i*L/folds):int((i+1)*L/folds)]
         train_idx=np.delete(indexes,np.arange(int(i*L/folds),int((i+1)*L/folds)))
         
-        model = GAT_ANE_MHH(62,1)
+        model = GAT_ANE_MHH(9,1)
         if use_cuda:
             model = model.cuda()
     
@@ -80,20 +76,23 @@ def train_model(
         test_graph=np.vectorize(lambda b:b["image_graph"])(test_dat)
         test_label=np.vectorize(lambda b:b["landmarks"])(test_dat)
         
-        loss_function = nn.MSELoss()
+        loss_function = nn.L1Loss()
         
         epoch_train=[]
+        epoch_train_abs=[]
         epoch_test=[]
+        epoch_test_abs=[]
         for e in tqdm(range(epochs), total=epochs, desc="Epoch ", disable=disable_tqdm,):
             try:
                 #train_losses, train_accs = train_(model, opt, train_graph, train_label,loss_function,
                                                   #batch_size=batch_size, use_cuda=use_cuda, disable_tqdm=disable_tqdm,)
-                train_losses, train_accs =train_(model=model,
+                train_losses, train_accs,train_accs_abs =train_(model=model,
                                                  optimiser=opt,
                                                  graphs=train_graph,
                                                  labels=train_label,
                                                  use_cuda=use_cuda,
                                                  loss_function=nn.MSELoss(),
+                                                 #loss_function=nn.L1Loss(),
                                                  #batch_size=1,
                                                  batch_size=batch_size,
                                                  disable_tqdm=disable_tqdm,
@@ -101,12 +100,14 @@ def train_model(
             
                 last_epoch_train_loss = np.mean(train_losses)
                 last_epoch_train_acc = np.mean(train_accs)
+                last_epoch_train_loss_l1 = np.mean(train_accs_abs)
+
             except KeyboardInterrupt:
                 print("Training interrupted!")
                 interrupted = True
         
             #valid_accs = test_(model,test_graph,test_label,use_cuda,desc="Validation ", disable_tqdm=disable_tqdm,)
-            valid_accs = test_(model=model,
+            valid_accs,loss_l1 = test_(model=model,
                                graphs=test_graph,
                                labels=test_label,
                                use_cuda=use_cuda,
@@ -115,25 +116,46 @@ def train_model(
                                disable_tqdm=False)
                 
             last_epoch_valid_acc = np.mean(valid_accs)
+            last_epoch_valid_acc_l1 = np.mean(loss_l1)
         
             if last_epoch_valid_acc>best_valid_acc:
                 best_valid_acc = last_epoch_valid_acc
                 best_model = copy.deepcopy(model)
         
             epoch_train.append(last_epoch_train_loss)
+            epoch_train_abs.append(last_epoch_train_loss_l1)
             epoch_test.append(last_epoch_valid_acc)
-            tqdm.write("EPOCH SUMMARY {loss:.4f} {t_acc:.2f}% {v_acc:.2f}%".format(loss=last_epoch_train_loss, t_acc=last_epoch_train_acc, v_acc=last_epoch_valid_acc))
+            epoch_test_abs.append(last_epoch_valid_acc_l1)
+            tqdm.write("EPOCH SUMMARY TRAIN [ L2: {train_loss_l2:.4f} L1:  {train_loss_l1:.2f} ] TEST [ L2: {test_loss_l2:.4f} L1:  {test_loss_l1:.2f} ]".format(
+                train_loss_l2=last_epoch_train_loss,
+                train_loss_l1=last_epoch_train_loss_l1,
+                test_loss_l2=last_epoch_valid_acc,
+                test_loss_l1=last_epoch_valid_acc_l1,
+                ))
         
             if interrupted:
                 break
     
-        last_results[fold]={"train_acc":train_accs,"train_loss":epoch_train,"valid_acc":epoch_test}
-        results[fold]={"train_acc":last_epoch_train_acc,"train_loss":last_epoch_train_loss,"valid_acc":last_epoch_valid_acc}
+        last_results[fold]={"train_acc":train_accs,
+                            "train_loss":epoch_train,
+                            "valid_acc":epoch_test
+                            }
+
+        results[fold]={"train_acc":last_epoch_train_acc,
+                        "train_loss":last_epoch_train_loss,
+                        "valid_acc":last_epoch_valid_acc
+                        }
+
+        results_abs[fold]={"train_acc_abs":epoch_train_abs,
+                        "valid_acc_abs":epoch_test_abs
+                        }
+
         save_model(os.path.join(os.path.dirname(os.path.realpath(__file__)),sub_dir)+"best"+str(fold),best_model)
         save_model(os.path.join(os.path.dirname(os.path.realpath(__file__)),sub_dir)+"last"+str(fold),model)
     np.save(os.path.join(os.path.dirname(os.path.realpath(__file__)),sub_dir)+"results_10f_unsampled_hh"+'.npy',results)
     np.save(os.path.join(os.path.dirname(os.path.realpath(__file__)),sub_dir)+"last_results_10f_unsampled_hh"+'.npy',last_results)
-    return results,last_results
+    np.save(os.path.join(os.path.dirname(os.path.realpath(__file__)),sub_dir)+"last_results_abs_10f_unsampled_hh"+'.npy',results_abs)
+    return results,last_results,results_abs
 
 
 
@@ -149,13 +171,26 @@ def main(
         ):
     use_cuda = use_cuda and torch.cuda.is_available()
 
-    dataset=Rotated_Dataset(data_arg,Data_version)
+    #dataset=Rotated_Dataset(data_arg,Data_version)
+    dataset=Rotated_Dataset(data_arg,Data_version,
+                        features=[
+                            12,
+                            13,
+                            15,
+                            16,
+                            -5,
+                            -4,
+                            -3,
+                            -2,
+                            -1,
+                        ]
+                       )
 
     if train:
 
         results=train_model(dataset,
-                epochs=int(120),
-                batch_size=int(250),
+                epochs=int(250),
+                batch_size=int(350),
                 use_cuda=True,
                 folds=5,
                 disable_tqdm=False,

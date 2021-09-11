@@ -161,11 +161,11 @@ class GAT_ANE_HH(nn.Module):
 
 class GAT_ANE_MHH(nn.Module):
     
-    def __init__(self,num_features,num_classes,num_heads=[2,5,10]):
+    def __init__(self,num_features,num_classes,num_heads=[2,5,8,10,5,2]):
         super(GAT_ANE_MHH,self).__init__()
         
         self.layer_heads = [1]+num_heads
-        self.GAT_layer_sizes = [num_features,32,64,64]
+        self.GAT_layer_sizes = [num_features,32,64,64,64,32,16]
         
         self.MLP_layer_sizes = [self.layer_heads[-1]*self.GAT_layer_sizes[-1],32,num_classes]
         self.MLP_acts = [F.relu,lambda x:x]

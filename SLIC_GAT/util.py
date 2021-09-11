@@ -408,6 +408,7 @@ def train_(
 
     train_losses = []
     train_accs = []
+    train_accs_abs = []
     
     #loss_function = nn.MSELoss()
     #indexes = train_idx[np.random.permutation(len(train_idx))]
@@ -449,12 +450,15 @@ def train_(
 #
         #
         acc=np.sum((pred-batch_labels.cpu().numpy())**2) / batch_labels.shape[0]
+
+        acc_l1=np.sum(np.abs(pred-batch_labels.cpu().numpy())) / batch_labels.shape[0]
+
         mode = sp.stats.mode(pred)
         tg = time.time()
         
         tqdm.write(
-              "{loss:.4f}\t{acc:.2f}%\t{mode} (x{modecount})".format(
-                  loss=loss.item(),
+              "{loss:.4f}\t{acc:.2f}\t{mode} (x{modecount})".format(
+                  loss=acc_l1,
                   acc=acc,
                   mode=mode[0][0],
                   modecount=mode[1][0],
@@ -467,6 +471,9 @@ def train_(
         
         train_losses.append(loss.detach().cpu().item())
         train_accs.append(acc)
+
+        train_accs_abs.append(acc_l1)
+
         if profile:
             ti = time.time()
             
@@ -481,7 +488,7 @@ def train_(
                     bk=100*(ti-th)/tt,
                     ))
         
-    return train_losses, train_accs
+    return train_losses, train_accs,train_accs_abs
 
 def test(model, graphs, labels, use_cuda, desc="Test ", disable_tqdm=False):
     test_accs = []
@@ -514,6 +521,7 @@ def test_(model,
              batch_size=1,
              disable_tqdm=False):
     test_accs = []
+    test_accs_l1 = []
     #for i in tqdm(range(len(labels)), total=len(labels), desc=desc, disable=disable_tqdm):
     for b in tqdm(range(0,len(labels),batch_size), total=len(labels)/batch_size, desc=desc, disable=disable_tqdm):
         with torch.no_grad():
@@ -534,11 +542,14 @@ def test_(model,
             pred=y.detach().cpu().numpy()
 
             acc=np.sum((pred-pyt_labels.cpu().numpy())**2) / pyt_labels.cpu().numpy().shape[0]
+
+            acc_l1=np.sum(np.abs(pred-pyt_labels.cpu().numpy())) / pyt_labels.cpu().numpy().shape[0]
            #acc=np.sum((pred-batch_labels.cpu().numpy())**2) / batch_labels.shape[0]
             
             test_accs.append(acc)
+            test_accs_l1.append(acc_l1)
             #test_accs.append(loss.detach().cpu().item())
-    return test_accs
+    return test_accs,test_accs_l1
 
 def main_plot(dset_folder,save):
     dset = MNIST(dset_folder,download=True)
