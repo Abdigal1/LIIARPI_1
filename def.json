@@ -1,0 +1,63 @@
+{
+    "pickable":
+        ["rgb_mean",
+            "rgb_std",
+            "rgb_per",
+            "rgb_mo",
+            "lab_mean",
+            "lab_std",
+            "lab_per",
+            "lab_mo",
+            "hsv_mean",
+            "hsv_std",
+            "hsv_per",
+            "hsv_mo",
+            "LCh_mean",
+            "LCh_std",
+            "LCh_per",
+            "LCh_mo",
+            "lCh_std",
+            "lCh_per",
+            "lCh_mo",
+            "x_mean",
+            "x_std",
+            "y_mean",
+            "y_std",
+            "N"]
+
+    ,
+
+    "train":{
+        "train1":{
+         "metrics":["neg_mean_absolute_error"],
+         "model":["Bayes"],
+         "nfolds":5,
+         "metadata":[
+            "rgb_mean.0",
+            "x_mean" 
+         ]
+        },
+     
+        "train2":{
+         "metrics":["neg_root_mean_squared_error"],
+         "model":["Lasso"],
+         "nfolds":5,
+         "metadata":[
+            "lab_mean.0",
+            "lab_mean.1"
+         ]
+        },
+        "train3":{
+            "metrics":["neg_mean_absolute_error"],
+            "model":["SVR"],
+            "nfolds":5,
+            "metadata":[
+               "LCh_mean.1" 
+            ]
+           }
+        
+     }
+
+
+
+}
