@@ -18,8 +18,8 @@ from Data_loader_image import *
 #Base de datos
 #sys.path.append()
 #data=("/").join(pth.split("/")[:-2])+"/Data_Base/Metada_V6G_p1"
-data=("/").join(pth.split("/")[:-2])+"/lab/Data_Base/Metada_V6G"
-data_arg=("/").join(pth.split("/")[:-2])+"/lab/Data_Base"
+data=("/").join(pth.split("/")[:-2])+"/Data_Base/Metada_V6G"
+data_arg=("/").join(pth.split("/")[:-2])+"/Data_Base"
 
 to_cuda = to_cuda
 
@@ -33,7 +33,7 @@ def train_model(
         ):
     print("Reading dataset")
 
-    sub_dir="MMhh_Sel_L2/"
+    sub_dir="MMhh_Sel_L2_10Cl/"
     print(os.path.join(os.path.dirname(os.path.realpath(__file__)),sub_dir))
 
     ind=np.arange(0,len(dataset))
@@ -42,6 +42,12 @@ def train_model(
     last_results={}
     results={}
     results_abs={}
+    results_sensitivity={}
+    results_specificity={}
+    results_TP={}
+    results_TN={}
+    results_FP={}
+    results_FN={}
     for fold in range(folds):
         #generate train-test
         print("fold "+str(fold+1))
@@ -80,13 +86,26 @@ def train_model(
         
         epoch_train=[]
         epoch_train_abs=[]
+        epoch_train_sensitivity=[]
+        epoch_train_specificity=[]
+        epoch_train_TP=[]
+        epoch_train_TN=[]
+        epoch_train_FP=[]
+        epoch_train_FN=[]
+
         epoch_test=[]
         epoch_test_abs=[]
+        epoch_test_sensitivity=[]
+        epoch_test_specificity=[]
+        epoch_test_TP=[]
+        epoch_test_TN=[]
+        epoch_test_FP=[]
+        epoch_test_FN=[]
         for e in tqdm(range(epochs), total=epochs, desc="Epoch ", disable=disable_tqdm,):
             try:
-                #train_losses, train_accs = train_(model, opt, train_graph, train_label,loss_function,
-                                                  #batch_size=batch_size, use_cuda=use_cuda, disable_tqdm=disable_tqdm,)
-                train_losses, train_accs,train_accs_abs =train_(model=model,
+
+                train_losses, train_accs,train_accs_abs,train_sensitivity,train_specificity,train_TP,train_TN,train_FP,train_FN=train_(
+                                                model=model,
                                                  optimiser=opt,
                                                  graphs=train_graph,
                                                  labels=train_label,
@@ -101,13 +120,18 @@ def train_model(
                 last_epoch_train_loss = np.mean(train_losses)
                 last_epoch_train_acc = np.mean(train_accs)
                 last_epoch_train_loss_l1 = np.mean(train_accs_abs)
+                last_epoch_train_sensitivity=np.mean(np.array(train_sensitivity),axis=0)
+                last_epoch_train_specificity=np.mean(np.array(train_specificity),axis=0)
+                last_epoch_train_TP=np.sum(np.array(train_TP),axis=0)
+                last_epoch_train_TN=np.sum(np.array(train_TN),axis=0)
+                last_epoch_train_FP=np.sum(np.array(train_FP),axis=0)
+                last_epoch_train_FN=np.sum(np.array(train_FN),axis=0)
 
             except KeyboardInterrupt:
                 print("Training interrupted!")
                 interrupted = True
         
-            #valid_accs = test_(model,test_graph,test_label,use_cuda,desc="Validation ", disable_tqdm=disable_tqdm,)
-            valid_accs,loss_l1 = test_(model=model,
+            valid_accs,loss_l1,test_sensitivity,test_specificity,test_TP,test_TN,test_FP,test_FN = test_(model=model,
                                graphs=test_graph,
                                labels=test_label,
                                use_cuda=use_cuda,
@@ -117,6 +141,12 @@ def train_model(
                 
             last_epoch_valid_acc = np.mean(valid_accs)
             last_epoch_valid_acc_l1 = np.mean(loss_l1)
+            last_epoch_test_sensitivity=np.mean(np.array(test_sensitivity),axis=0)
+            last_epoch_test_specificity=np.mean(np.array(test_specificity),axis=0)
+            last_epoch_test_TP=np.sum(np.array(test_TP),axis=0)
+            last_epoch_test_TN=np.sum(np.array(test_TN),axis=0)
+            last_epoch_test_FP=np.sum(np.array(test_FP),axis=0)
+            last_epoch_test_FN=np.sum(np.array(test_FN),axis=0)
         
             if last_epoch_valid_acc>best_valid_acc:
                 best_valid_acc = last_epoch_valid_acc
@@ -124,13 +154,34 @@ def train_model(
         
             epoch_train.append(last_epoch_train_loss)
             epoch_train_abs.append(last_epoch_train_loss_l1)
+            epoch_train_sensitivity.append(last_epoch_train_sensitivity)
+            epoch_train_specificity.append(last_epoch_train_specificity)
+            epoch_train_TP.append(last_epoch_train_TP)
+            epoch_train_TN.append(last_epoch_train_TN)
+            epoch_train_FP.append(last_epoch_train_FP)
+            epoch_train_FN.append(last_epoch_train_FN)
+
             epoch_test.append(last_epoch_valid_acc)
             epoch_test_abs.append(last_epoch_valid_acc_l1)
+            epoch_test_sensitivity.append(last_epoch_test_sensitivity)
+            epoch_test_specificity.append(last_epoch_test_specificity)
+            epoch_test_TP.append(last_epoch_test_TP)
+            epoch_test_TN.append(last_epoch_test_TN)
+            epoch_test_FP.append(last_epoch_test_FP)
+            epoch_test_FN.append(last_epoch_test_FN)
+
             tqdm.write("EPOCH SUMMARY TRAIN [ L2: {train_loss_l2:.4f} L1:  {train_loss_l1:.2f} ] TEST [ L2: {test_loss_l2:.4f} L1:  {test_loss_l1:.2f} ]".format(
                 train_loss_l2=last_epoch_train_loss,
                 train_loss_l1=last_epoch_train_loss_l1,
                 test_loss_l2=last_epoch_valid_acc,
                 test_loss_l1=last_epoch_valid_acc_l1,
+                ))
+
+            tqdm.write("EPOCH SUMMARY TRAIN [ Sensitivity: {train_loss_l2} Specificity:  {train_loss_l1} ] TEST [ Sensitivity: {test_loss_l2} Specificity:  {test_loss_l1} ]".format(
+                train_loss_l2=last_epoch_train_sensitivity,
+                train_loss_l1=last_epoch_train_specificity,
+                test_loss_l2=last_epoch_test_sensitivity,
+                test_loss_l1=last_epoch_test_specificity,
                 ))
         
             if interrupted:
@@ -150,12 +201,44 @@ def train_model(
                         "valid_acc_abs":epoch_test_abs
                         }
 
+        #Sensitivity
+        results_sensitivity[fold]={"train_acc_abs":epoch_train_sensitivity,
+                        "valid_acc_abs":epoch_test_sensitivity
+                        }
+                        
+        #specificity
+        results_specificity[fold]={"train_acc_abs":epoch_train_specificity,
+                        "valid_acc_abs":epoch_test_specificity
+                        }
+        #TP
+        results_TP[fold]={"train_acc_abs":epoch_train_TP,
+                        "valid_acc_abs":epoch_test_TP
+                        }
+        #TN
+        results_TN[fold]={"train_acc_abs":epoch_train_TN,
+                        "valid_acc_abs":epoch_test_TN
+                        }
+        #FP
+        results_FP[fold]={"train_acc_abs":epoch_train_FP,
+                        "valid_acc_abs":epoch_test_FP
+                        }
+        #FN
+        results_FN[fold]={"train_acc_abs":epoch_train_FN,
+                        "valid_acc_abs":epoch_test_FN
+                        }
+
         save_model(os.path.join(os.path.dirname(os.path.realpath(__file__)),sub_dir)+"best"+str(fold),best_model)
         save_model(os.path.join(os.path.dirname(os.path.realpath(__file__)),sub_dir)+"last"+str(fold),model)
     np.save(os.path.join(os.path.dirname(os.path.realpath(__file__)),sub_dir)+"results_10f_unsampled_hh"+'.npy',results)
     np.save(os.path.join(os.path.dirname(os.path.realpath(__file__)),sub_dir)+"last_results_10f_unsampled_hh"+'.npy',last_results)
     np.save(os.path.join(os.path.dirname(os.path.realpath(__file__)),sub_dir)+"last_results_abs_10f_unsampled_hh"+'.npy',results_abs)
-    return results,last_results,results_abs
+    np.save(os.path.join(os.path.dirname(os.path.realpath(__file__)),sub_dir)+"last_results_sensitivity_10f_unsampled_hh"+'.npy',results_sensitivity)
+    np.save(os.path.join(os.path.dirname(os.path.realpath(__file__)),sub_dir)+"last_results_specificity_10f_unsampled_hh"+'.npy',results_specificity)
+    np.save(os.path.join(os.path.dirname(os.path.realpath(__file__)),sub_dir)+"last_results_TP_10f_unsampled_hh"+'.npy',results_TP)
+    np.save(os.path.join(os.path.dirname(os.path.realpath(__file__)),sub_dir)+"last_results_TN_10f_unsampled_hh"+'.npy',results_TN)
+    np.save(os.path.join(os.path.dirname(os.path.realpath(__file__)),sub_dir)+"last_results_FP_10f_unsampled_hh"+'.npy',results_FP)
+    np.save(os.path.join(os.path.dirname(os.path.realpath(__file__)),sub_dir)+"last_results_FN_10f_unsampled_hh"+'.npy',results_FN)
+    return results,last_results,results_abs,results_sensitivity,results_specificity,results_TP,results_TN,results_FP,results_FN
 
 
 
@@ -189,7 +272,8 @@ def main(
     if train:
 
         results=train_model(dataset,
-                epochs=int(250),
+                epochs=int(350),
+                #epochs=int(5),
                 batch_size=int(350),
                 use_cuda=True,
                 folds=5,
