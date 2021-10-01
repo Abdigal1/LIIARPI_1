@@ -30,31 +30,21 @@
     "train":{
         "train1":{
          "metrics":["neg_mean_absolute_error"],
-         "model":["Bayes"],
+         "model":"Bayes",
          "nfolds":5,
          "metadata":[
-            "rgb_mean.0",
-            "x_mean" 
+            "rgb_mean.0"
          ]
         },
      
         "train2":{
          "metrics":["neg_root_mean_squared_error"],
-         "model":["Lasso"],
+         "model":"Lasso",
          "nfolds":5,
          "metadata":[
-            "lab_mean.0",
-            "lab_mean.1"
+            "lab_mean.0"
          ]
-        },
-        "train3":{
-            "metrics":["neg_mean_absolute_error"],
-            "model":["SVR"],
-            "nfolds":5,
-            "metadata":[
-               "LCh_mean.1" 
-            ]
-           }
+        }
         
      }
 

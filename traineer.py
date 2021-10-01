@@ -7,11 +7,12 @@ from sklearn.model_selection import cross_validate
 from sklearn.svm import SVR
 from sklearn.linear_model import Lasso
 from sklearn.linear_model import BayesianRidge
-
-
+import matplotlib.pyplot as plt
+from sklearn.svm import SVC
+plt.rcParams["figure.figsize"] = (20,3)
 def parse_args():
     parser = argparse.ArgumentParser('Train')
-    parser.add_argument('--dataset', type=str, default='/home/lambda/lab/Metadata_V7G_sckit', help='Path of Dataset')
+    parser.add_argument('--dataset', type=str, default=os.path.join(os.path.curdir, 'Metadata_V7G_sckit'), help='Path of Dataset')
     parser.add_argument('--parameters', type=str, default='def.json', help='Trainning parameters', )
     parser.add_argument('--normalized', type=bool, default=False, help='Specifies if data is normalized')
     return parser.parse_args()
@@ -47,7 +48,10 @@ def load(dat, args):
                     key_n = int(j.split(".")[-1])
                     aux.append(nn[key_m][key_n])
                 else:
-                    aux.extend(nn[j])
+                    try:
+                        aux.extend(nn[j])
+                    except:
+                        aux.append(nn[j])
             
 
 
@@ -63,24 +67,50 @@ def main(args):
         data = json.load(f)
 
     trains = data['train']
-
+    cc = 1
     for di in trains.values():
         X, y = load(di["metadata"], args)
-
+        ND = X.shape[0]
         m_s = di["model"]
         model = None
         if m_s == "SVR":
             model = SVR(C=1.0, kernel="rbf")
         elif m_s == "Lasso":
             model = Lasso(max_iter=3000, alpha=0.2)
+        elif m_s == "SVC":
+            
+            model = SVC(kernel = 'rbf')
+            y = y>10
+            y = y.astype(int)
+            plt.hist(y)
+            plt.show()
         else:
             model = BayesianRidge(lambda_1=0.01, lambda_2=1e-6)
-        print(X.shape, y.shape)
-
-        print(cross_validate(model, X, y, scoring=tuple(di["metrics"]), cv=int(di["nfolds"])))
-
-
-
+        #print(X.shape, y.shape)
+        out = cross_validate(model, X, y, scoring=tuple(di["metrics"]), cv=int(di["nfolds"]), return_estimator=True)
+        print(out.keys())
+        print("==========================SCORE=====================")
+        for i in range(3, len(out.keys())):
+            scores = np.array(out[list(out.keys())[i]])
+            print(list(out.keys())[i])
+            print(scores)
+        score_bound = scores.mean()
+        ax = plt.figure(cc)
+        mods = out['estimator'][-1]
+        yhat = mods.predict(X)
+        ts = np.random.randint(0, ND, (200,))
+        x = np.arange(200)
+        plt.plot(x, y[ts])
+        plt.plot(x, yhat[ts])
+        #plt.plot(x, yhat[ts] + score_bound)
+        #plt.plot(x, yhat[ts] - score_bound)
+        plt.fill_between(x, yhat[ts] - score_bound, yhat[ts] + score_bound, facecolor='yellow', alpha=0.5)
+        #plt.legend(["Real", "Estimado", "Superior", "Inferior"])
+        plt.legend(["Real", "Estimado"])
+        plt.ylim([8, 16])
+        ax.show()
+        cc+=1
+    input()
 
 if __name__ == "__main__":
     
