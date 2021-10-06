@@ -469,17 +469,9 @@ def train_(
         acc_l1=np.sum(np.abs(pred-batch_labels.cpu().numpy())) / batch_labels.shape[0]
 
         TP,TN,FP,FN=con_mat(batch_labels.cpu().numpy(),pred,
-                            np.array([
-                                    [0,2],
-                                    [2,4],
-                                    [4,6],
-                                    [6,8],
-                                    [8,10],
-                                    [10,12],
-                                    [12,14],
-                                    [14,25]
-                                    ])
-                                    )
+                            np.array([[0,6],[6,8],[8,10],[10,13],[13,25]])
+                            #np.array([[0,2],[2,4],[4,6],[6,8],[8,10],[10,12],[12,14],[14,25]])
+                            )
         
         #print(TP)
         #print(FN)
@@ -594,12 +586,8 @@ def test_(model,
             acc_l1=np.sum(np.abs(pred-pyt_labels.cpu().numpy())) / pyt_labels.cpu().numpy().shape[0]
            
             TP,TN,FP,FN=con_mat(pyt_labels.cpu().numpy(),pred,
-                            np.array([[0,6],
-                                    [6,8],
-                                    [8,10],
-                                    [10,13],
-                                    [13,25]
-                                    ])
+                            np.array([[0,6],[6,8],[8,10],[10,13],[13,25]])
+                            #np.array([[0,2],[2,4],[4,6],[6,8],[8,10],[10,12],[12,14],[14,25]])
                                         )
 
             sen=TP/(TP+FN)
