@@ -31,8 +31,8 @@ xywh=xywh.reshape(-1,4).astype(int)+1
 
 dir_origin=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Imagenes_originales\\'
 dir_ROI=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Sem_Auto\\eye_'
-dir_meta_sk=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Metadata_V7G_sckit\\'
-dir_meta_pt=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Metadata_V7G_pytorch\\'
+dir_meta_sk=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Metadata_V8G_sckit\\'
+dir_meta_pt=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Metadata_V8G_pytorch\\'
 #FOR
 for name in imgnames:
     try:
@@ -53,7 +53,7 @@ for name in imgnames:
             nx.readwrite.adjlist.write_adjlist(G,dir_meta_pt+str(ang)+"_"+name.split('.')[0])
 
             #FOR Sckit
-            Sampled=sample_central(SD,G,num=5,maxdeg=3)
+            Sampled=sample_central(SD,G,num=1,maxdeg=3)
             NSD={}
             for ID in Sampled:
                 NSD[ID]=SD[ID]
