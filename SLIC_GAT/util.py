@@ -327,6 +327,15 @@ def split_dataset(labels, valid_split=0.1):
             train_idx.append(i)
     return train_idx, valid_idx
 
+def con_mat(y,yp,ranges):
+  pr1r=np.vectorize(lambda y,range:np.logical_and(range[0]<=y,y<range[1]),signature="(),(i)->()")(yp,ranges)
+  pr2r=np.vectorize(lambda y,range:np.logical_and(range[0]<=y,y<range[1]),signature="(),(i)->()")(y,ranges)
+  TP=np.sum(pr2r*pr1r,axis=0)
+  TN=np.sum(np.logical_not(pr2r)*np.logical_not(pr1r),axis=0)
+  FN=np.sum((pr2r)*np.logical_not(pr1r),axis=0)
+  FP=np.sum(np.logical_not(pr2r)*(pr1r),axis=0)
+  return TP,TN,FP,FN
+
 def train(model, optimiser, graphs, labels, train_idx, use_cuda, batch_size=1, disable_tqdm=False, profile=False):
     train_losses = []
     train_accs = []
@@ -408,7 +417,14 @@ def train_(
 
     train_losses = []
     train_accs = []
-    
+    train_accs_abs = []
+    train_sensitivity=[]
+    train_specificity=[]
+    train_TP=[]
+    train_TN=[]
+    train_FP=[]
+    train_FN=[]
+
     #loss_function = nn.MSELoss()
     #indexes = train_idx[np.random.permutation(len(train_idx))]
     #labels=np.vectorize(lambda ind:dataset[ind],otypes=[object])(train_idx)
@@ -449,13 +465,38 @@ def train_(
 #
         #
         acc=np.sum((pred-batch_labels.cpu().numpy())**2) / batch_labels.shape[0]
+
+        acc_l1=np.sum(np.abs(pred-batch_labels.cpu().numpy())) / batch_labels.shape[0]
+
+        TP,TN,FP,FN=con_mat(batch_labels.cpu().numpy(),pred,
+                            np.array([
+                                    [0,2],
+                                    [2,4],
+                                    [4,6],
+                                    [6,8],
+                                    [8,10],
+                                    [10,12],
+                                    [12,14],
+                                    [14,25]
+                                    ])
+                                    )
+        
+        #print(TP)
+        #print(FN)
+        sen=TP/(TP+FN)
+        spe=TN/(FP+TN)
+        clacc=(TP+TN)/batch_labels.cpu().numpy().shape[0]
+
         mode = sp.stats.mode(pred)
         tg = time.time()
         
         tqdm.write(
-              "{loss:.4f}\t{acc:.2f}%\t{mode} (x{modecount})".format(
-                  loss=loss.item(),
+              "{loss:.2f}\t{acc:.2f}\t {sen} {spe} {clacc} {mode} (x{modecount})".format(
+                  loss=acc_l1,
                   acc=acc,
+                  sen=sen,
+                  spe=spe,
+                  clacc=clacc,
                   mode=mode[0][0],
                   modecount=mode[1][0],
               )
@@ -467,6 +508,14 @@ def train_(
         
         train_losses.append(loss.detach().cpu().item())
         train_accs.append(acc)
+        train_accs_abs.append(acc_l1)
+        train_sensitivity.append(sen)
+        train_specificity.append(spe)
+        train_TP.append(TP)
+        train_TN.append(TN)
+        train_FP.append(FP)
+        train_FN.append(FN)
+
         if profile:
             ti = time.time()
             
@@ -481,7 +530,7 @@ def train_(
                     bk=100*(ti-th)/tt,
                     ))
         
-    return train_losses, train_accs
+    return train_losses, train_accs,train_accs_abs,train_sensitivity,train_specificity,train_TP,train_TN,train_FP,train_FN
 
 def test(model, graphs, labels, use_cuda, desc="Test ", disable_tqdm=False):
     test_accs = []
@@ -514,6 +563,13 @@ def test_(model,
              batch_size=1,
              disable_tqdm=False):
     test_accs = []
+    test_accs_l1 = []
+    test_sensitivity=[]
+    test_specificity=[]
+    test_TP=[]
+    test_TN=[]
+    test_FP=[]
+    test_FN=[]
     #for i in tqdm(range(len(labels)), total=len(labels), desc=desc, disable=disable_tqdm):
     for b in tqdm(range(0,len(labels),batch_size), total=len(labels)/batch_size, desc=desc, disable=disable_tqdm):
         with torch.no_grad():
@@ -534,11 +590,32 @@ def test_(model,
             pred=y.detach().cpu().numpy()
 
             acc=np.sum((pred-pyt_labels.cpu().numpy())**2) / pyt_labels.cpu().numpy().shape[0]
-           #acc=np.sum((pred-batch_labels.cpu().numpy())**2) / batch_labels.shape[0]
+
+            acc_l1=np.sum(np.abs(pred-pyt_labels.cpu().numpy())) / pyt_labels.cpu().numpy().shape[0]
+           
+            TP,TN,FP,FN=con_mat(pyt_labels.cpu().numpy(),pred,
+                            np.array([[0,6],
+                                    [6,8],
+                                    [8,10],
+                                    [10,13],
+                                    [13,25]
+                                    ])
+                                        )
+
+            sen=TP/(TP+FN)
+            spe=TN/(FP+TN)
+            clacc=(TP+TN)/pyt_labels.cpu().numpy().shape[0]
             
             test_accs.append(acc)
+            test_accs_l1.append(acc_l1)
+            test_sensitivity.append(sen)
+            test_specificity.append(spe)
+            test_TP.append(TP)
+            test_TN.append(TN)
+            test_FP.append(FP)
+            test_FN.append(FN)
             #test_accs.append(loss.detach().cpu().item())
-    return test_accs
+    return test_accs,test_accs_l1,test_sensitivity,test_specificity,test_TP,test_TN,test_FP,test_FN
 
 def main_plot(dset_folder,save):
     dset = MNIST(dset_folder,download=True)
