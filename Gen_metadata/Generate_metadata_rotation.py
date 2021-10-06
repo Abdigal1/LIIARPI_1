@@ -31,8 +31,8 @@ xywh=xywh.reshape(-1,4).astype(int)+1
 
 dir_origin=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Imagenes_originales\\'
 dir_ROI=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Sem_Auto\\eye_'
-dir_meta_sk=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Metadata_V8G_sckit\\'
-dir_meta_pt=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Metadata_V8G_pytorch\\'
+dir_meta_sk=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Metadata_V9G_sckit\\'
+dir_meta_pt=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Metadata_V9G_pytorch\\'
 #FOR
 for name in imgnames:
     try:
@@ -70,6 +70,7 @@ for name in imgnames:
 def apply(dir_origin,dir_ROI,dir_meta,name):
     try:
         img = io.imread(dir_origin+name)
+        img=st_adjust(img)
         ROI = io.imread(dir_ROI+name)
         mask=assemble_mask(xywh[np.where(imgnames==(name))][0],img,ROI)
 #        lum = np.mean(mask,axis=2).astype(int)
