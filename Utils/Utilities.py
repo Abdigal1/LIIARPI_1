@@ -26,6 +26,7 @@ def toLCh(img):
     Lch=np.concatenate((L.reshape(L.shape[0],L.shape[1],1),
                         C.reshape(L.shape[0],L.shape[1],1),
                         h.reshape(L.shape[0],L.shape[1],1)),axis=2)
+    return Lch
 
 def maxmod(p,th=5000):
   for i in range(len(p[0][:])):
@@ -233,7 +234,7 @@ def get_SD_by_format(f,ind1,ind2,j):
 v_get_SD_by_format=np.vectorize(pyfunc=get_SD_by_format,signature='(x,y,z),(a),(b),(j)->(q,w)')
 
 def pack_segments(DIRID,f,i):
-    indx=np.where(f[:,:,9]==i)
+    indx=np.where(f[:,:,12]==i)
     SD_rgb_hsv_lab=v_get_SD_by_format(f,indx[0],indx[1],np.arange(1,13).reshape(-1,3))
     DIRID[i]['rgb_mean']=SD_rgb_hsv_lab[0,0]
     DIRID[i]['rgb_std']=SD_rgb_hsv_lab[0,1]
