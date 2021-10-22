@@ -18,7 +18,7 @@ from Data_loader_image import *
 #Base de datos
 #sys.path.append()
 #data=("/").join(pth.split("/")[:-2])+"/Data_Base/Metada_V6G_p1"
-data=("/").join(pth.split("/")[:-2])+"/Data_Base/Metada_V6G"
+data=("/").join(pth.split("/")[:-2])+"/Data_Base/Metada_V9G"
 data_arg=("/").join(pth.split("/")[:-2])+"/Data_Base"
 
 to_cuda = to_cuda
@@ -33,7 +33,7 @@ def train_model(
         ):
     print("Reading dataset")
 
-    sub_dir="MMhh_Sel_L2_Cl/"
+    sub_dir="MMhh_Sel_v8_StCl/"
     print(os.path.join(os.path.dirname(os.path.realpath(__file__)),sub_dir))
 
     ind=np.arange(0,len(dataset))
@@ -249,7 +249,7 @@ def main(
         batch_size:int=300,
         use_cuda:bool=True,
         disable_tqdm:bool=False,
-        Data_version = "Metadata_V7G_pytorch",
+        Data_version = "Metadata_V9G_pytorch",
         data_arg=data_arg
         ):
     use_cuda = use_cuda and torch.cuda.is_available()
