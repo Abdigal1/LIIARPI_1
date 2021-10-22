@@ -140,7 +140,7 @@ class Dataset(torch.utils.data.Dataset):
             return sample
 
 class Rotated_Dataset(torch.utils.data.Dataset):
-      def __init__(self, root_dir,medata_dir,features=np.arange(0,62),transform=None):
+      def __init__(self, root_dir,medata_dir,features=np.arange(0,62),range=[0,25],transform=None):
             'Initialization'
             #directories
             self.root_dir = root_dir
@@ -179,6 +179,10 @@ class Rotated_Dataset(torch.utils.data.Dataset):
             #self.landmarks_frame=np.delete(self.landmarks_frame,np.where(self.landmarks_frame[:,1].astype(float)==0),axis=0)
             self.landmarks_frame=np.delete(self.landmarks_frame,np.where(self.landmarks_frame[:,1].astype(float)>20),axis=0)
             self.landmarks_frame=np.delete(self.landmarks_frame,np.where(self.landmarks_frame[:,1].astype(float)<5),axis=0)
+
+            #Select range in Y
+            sel=np.logical_and(self.landmarks_frame[:,1].astype(float)>range[0],self.landmarks_frame[:,1].astype(float)<range[1])
+            self.landmarks_frame=self.landmarks_frame[sel]
             
             self.transform = transform
 
