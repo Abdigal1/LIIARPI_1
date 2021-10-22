@@ -261,6 +261,25 @@ def pack_segments(DIRID,f,i):
     return 0
 v_pack_segments=np.vectorize(pyfunc=pack_segments,signature="(),(x,y,z),()->()")
 
+def st_adjust(img):
+    im=stickerDetection(img)
+
+    st_mask=color.rgb2lab(im)[:,:,0]>80
+
+    st_mask_sh=np.concatenate((st_mask.reshape(st_mask.shape[0],st_mask.shape[1],1),
+                st_mask.reshape(st_mask.shape[0],st_mask.shape[1],1),
+                st_mask.reshape(st_mask.shape[0],st_mask.shape[1],1)),axis=2)
+
+    imm=st_mask_sh*im
+    
+    MB=np.mean(im[st_mask,:])
+
+    adj_img=np.concatenate((img[:,:,0].reshape(img.shape[0],img.shape[1],1)*(200/MB),
+                        img[:,:,1].reshape(img.shape[0],img.shape[1],1)*(200/MB),
+                        img[:,:,2].reshape(img.shape[0],img.shape[1],1)*(200/MB)),axis=2).astype(int)
+    
+    return adj_img
+
 def get_Statistical_Descriptors(img,mask,n_segments=800):
     lum = np.mean(mask,axis=2).astype(int)
     mask1=lum>0
