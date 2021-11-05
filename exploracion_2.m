@@ -1,6 +1,6 @@
 close all;clear;
 %% Detección del ojo(eye)
-a = imread('SF_c1anemia-102.jpg');%Falta 101 166 572
+a = imread('SF_c1anemia-430.jpg');%Falta 101 166 572
 %Caso extremo 676
 b = rgb2hsv(a);
 [W, H, ~] = size(a);
@@ -40,7 +40,8 @@ x = firstb(1);
 y = firstb(2);
 ww = firstb(3);
 hh = firstb(4);
-N = 2.2;
+%N = 2.2;
+N = 3.0;
 nx = max(0,floor(x-(ww/2)*(N/2)));
 ny = max(0,floor(y-(hh/2)*(N/2)));
 rb = [nx ny min(H-nx, N*ww) min(W-ny, 1.1*N*hh)];
