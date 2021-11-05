@@ -33,7 +33,7 @@ def train_model(
         ):
     print("Reading dataset")
 
-    sub_dir="MMhh_Sel_v8_StCl/"
+    sub_dir="MMhh_SelFR_v8_4Cl//"
     print(os.path.join(os.path.dirname(os.path.realpath(__file__)),sub_dir))
 
     ind=np.arange(0,len(dataset))
@@ -256,6 +256,7 @@ def main(
 
     #dataset=Rotated_Dataset(data_arg,Data_version)
     dataset=Rotated_Dataset(data_arg,Data_version,
+                        range=[10,14],
                         features=[
                             12,
                             13,
@@ -272,7 +273,7 @@ def main(
     if train:
 
         results=train_model(dataset,
-                epochs=int(350),
+                epochs=int(450),
                 #epochs=int(5),
                 batch_size=int(350),
                 use_cuda=True,
