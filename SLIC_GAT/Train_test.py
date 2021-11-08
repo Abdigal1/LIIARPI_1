@@ -33,7 +33,7 @@ def train_model(
         ):
     print("Reading dataset")
 
-    sub_dir="MMhh_SelFR_v8_4Cl//"
+    sub_dir="MMhh_SelFR_v8_BinCl//"
     print(os.path.join(os.path.dirname(os.path.realpath(__file__)),sub_dir))
 
     ind=np.arange(0,len(dataset))
@@ -273,9 +273,9 @@ def main(
     if train:
 
         results=train_model(dataset,
-                epochs=int(450),
+                epochs=int(550),
                 #epochs=int(5),
-                batch_size=int(350),
+                batch_size=int(400),
                 use_cuda=True,
                 folds=5,
                 disable_tqdm=False,
