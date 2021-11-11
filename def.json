@@ -39,10 +39,16 @@
      
         "train2":{
          "metrics":["neg_root_mean_squared_error"],
-         "model":"Lasso",
+         "model":"SVR",
          "nfolds":5,
          "metadata":[
-            "lab_mean.0"
+            "rgb_mean.2",
+            "rgb_mo.2",
+            "lab_std.0",
+            "lCh_std.0",
+            "x_std",
+            "y_std",
+            "N"
          ]
         }
         

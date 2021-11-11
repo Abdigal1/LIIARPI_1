@@ -4,10 +4,11 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import pearsonr
 import os
-PATH = os.path.join(os.path.curdir, 'Metadata_V7G_sckit')
+
+PATH = os.path.join(os.path.curdir, '..\\Data_base\\Metadata_V9G_sckit')
 flaux = True
 PARAM = None
-N = 5
+N = 1
 bT = 0
 #key_met = [line.strip() for line in open("meta.txt")]
 df = pd.read_csv("db_sample_201901221525.csv")
@@ -49,6 +50,6 @@ print(f"Total de datos menor a 5 : {bT} de {len(X)}")
 print(X.shape, y.shape)
 for i in range(X.shape[1]):
     corr, _ = pearsonr(X[:, i], y)
-    if abs(corr) >0.2:
-        print(i, corr)
+    #if abs(corr) >0.2:
+    print(i, corr)
     

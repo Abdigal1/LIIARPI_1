@@ -9,17 +9,20 @@ from sklearn.linear_model import Lasso
 from sklearn.linear_model import BayesianRidge
 import matplotlib.pyplot as plt
 from sklearn.svm import SVC
+from sklearn.preprocessing import normalize
+from sklearn.preprocessing import PowerTransformer
+pt = PowerTransformer()
 plt.rcParams["figure.figsize"] = (20,3)
 def parse_args():
     parser = argparse.ArgumentParser('Train')
-    parser.add_argument('--dataset', type=str, default=os.path.join(os.path.curdir, 'Metadata_V7G_sckit'), help='Path of Dataset')
+    parser.add_argument('--dataset', type=str, default=os.path.join(os.path.curdir, '..\\Data_base\\Metadata_V9G_sckit'), help='Path of Dataset')
     parser.add_argument('--parameters', type=str, default='def.json', help='Trainning parameters', )
     parser.add_argument('--normalized', type=bool, default=False, help='Specifies if data is normalized')
     return parser.parse_args()
 
 
 def load(dat, args):
-    N = 5
+    N = 1
     PATH = args.dataset
     bT = 0
     #key_met = [line.strip() for line in open("meta.txt")]
@@ -57,8 +60,11 @@ def load(dat, args):
 
         X.append(aux)
     X = np.array(X)
+    #X = normalize(X, axis=0)
+    pt.fit(X)
+    pt.transform(X)
     y = np.array(Y)
-    print(f"Total de datos menor a 5 : {bT} de {len(X)}")
+    print(f"Total de datos menor a {N} : {bT} de {len(X)}")
 
     return X, y
 
