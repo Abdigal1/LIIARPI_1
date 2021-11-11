@@ -33,7 +33,7 @@ def train_model(
         ):
     print("Reading dataset")
 
-    sub_dir="MMhh_SelFR_v8_BinCl//"
+    sub_dir="MMhh_SelFR_v8_Bin2Cl//"
     print(os.path.join(os.path.dirname(os.path.realpath(__file__)),sub_dir))
 
     ind=np.arange(0,len(dataset))
