@@ -351,9 +351,9 @@ def get_Statistical_Descriptors_(img,mask,n_segments=800,angle=0):
     LCh=toLCh(img)
     f[:,:,9:12]=LCh[:,:,0:3]
     f[:,:,12]=m_slic
-    DIRID={int(i):{'rgb_mean':np.zeros((1)),'rgb_std':np.zeros((1)),'rgb_per':np.zeros((1)),'rgb_mo':np.zeros((1)),
-                   'lab_mean':np.zeros((1)),'lab_std':np.zeros((1)),'lab_per':np.zeros((1)),'lab_mo':np.zeros((1)),
-                   'hsv_mean':np.zeros((1)),'hsv_std':np.zeros((1)),'hsv_per':np.zeros((1)),'hsv_mo':np.zeros((1)),
+    DIRID={int(i):{'rgb_mean':np.zeros((1)),'rgb_std':np.zeros((1)),'rgb_mo':np.zeros((1)),
+                   'lab_mean':np.zeros((1)),'lab_std':np.zeros((1)),'lab_mo':np.zeros((1)),
+                   'hsv_mean':np.zeros((1)),'hsv_std':np.zeros((1)),'hsv_mo':np.zeros((1)),
                   } for i in RID}
 
     v_pack_segments(DIRID,f,RID)
@@ -370,14 +370,15 @@ def get_Normalized_Statistical_Descriptors_(img,mask,n_segments=800,angle=0):
     fm=np.logical_or(fmn,fmw)
     img=st_adjust(img)
 
-    img=rotate(img,angle)
-    mask1=rotate(mask1,angle)
+    img=rotate(img,angle,resize=True)
+    mask1=rotate(mask1,angle,resize=True)
+    fm=rotate(fm,angle,resize=True)
 
     m_slic = slic(image=img, n_segments=n_segments,sigma=5,slic_zero=True,mask=mask1)
 
 
     RID=np.unique(m_slic.flatten())
-    tm_slic=tslic=copy.deepcopy(m_slic)
+    tm_slic=copy.deepcopy(m_slic)
 
 
     tm_slic[np.where(fm)]=n_segments+5

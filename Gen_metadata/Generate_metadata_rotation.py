@@ -63,6 +63,7 @@ for name in imgnames:
             print("done "+str(ang)+"_"+name.split('.')[0]+'.npy')
     except Exception as e:
         exc_type, exc_obj, exc_tb = sys.exc_info()
+        print("error")
         print(exc_type, exc_tb.tb_lineno)
         print(name)
         print(e)
