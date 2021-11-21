@@ -29,10 +29,10 @@ xywh=v_no_spaces(xywh)
 xywh=np.vectorize(pyfunc=(lambda x:float(x)))(xywh.reshape(1,-1)[0])
 xywh=xywh.reshape(-1,4).astype(int)+1
 
-dir_origin=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Imagenes_originales\\'
+dir_origin=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Imagenes_Originales\\'
 dir_ROI=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Sem_Auto\\eye_'
-dir_meta_sk=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Metadata_V9G_sckit\\'
-dir_meta_pt=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Metadata_V9G_pytorch\\'
+dir_meta_sk=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Metadata_V10G_sckit\\'
+dir_meta_pt=('\\').join(pth.split('\\')[:-2])+'\\Data_base\\Metadata_V10G_pytorch\\'
 #FOR
 for name in imgnames:
     try:
@@ -43,7 +43,7 @@ for name in imgnames:
 #           mask1=lum > 0
         for ang in np.arange(0,360,360/8):
 
-            SD,G,h,edges=get_graph_from_image(img,mask,desired_nodes=20,angle=ang)
+            SD,G,h,edges=get_graph_from_image(img,mask,desired_nodes=20,angle=ang,normalized=True)
 
             #np.save(dir_meta+str(ang)+"_"+name.split('.')[0]+'.npy',np.array([h,edges]))
             #nx.readwrite.adjlist.write_adjlist(G,dir_meta+name.split('.')[0])
@@ -63,6 +63,7 @@ for name in imgnames:
             print("done "+str(ang)+"_"+name.split('.')[0]+'.npy')
     except Exception as e:
         exc_type, exc_obj, exc_tb = sys.exc_info()
+        print("error")
         print(exc_type, exc_tb.tb_lineno)
         print(name)
         print(e)
