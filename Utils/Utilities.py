@@ -338,8 +338,10 @@ def get_Statistical_Descriptors_(img,mask,n_segments=800,angle=0):
     lum = np.mean(mask,axis=2).astype(int)
     mask1=lum>0
 
-    img=rotate(img,angle)
-    mask1=rotate(mask1,angle)
+    #img=rotate(img,angle)
+    #mask1=rotate(mask1,angle)
+    img=rotate(img,angle,resize=True)
+    mask1=rotate(mask1,angle,resize=True)
 
     m_slic = slic(image=img, n_segments=n_segments,sigma=5,slic_zero=True,mask=mask1)
     
@@ -370,7 +372,7 @@ def get_Normalized_Statistical_Descriptors_(img,mask,n_segments=800,angle=0):
     fm=np.logical_or(fmn,fmw)
     img=st_adjust(img)
 
-    img=rotate(img,angle,resize=True)
+    img=rotate(img.astype('uint8'),angle,resize=True)
     mask1=rotate(mask1,angle,resize=True)
     fm=rotate(fm,angle,resize=True)
 
