@@ -16,6 +16,7 @@ from skimage.transform import rotate
 import networkx as nx
 from skimage import measure
 from skimage import color
+import copy
 
 def toLCh(img):
     lab=color.rgb2lab(img)
@@ -225,33 +226,65 @@ def get_X_U(img,mask,n_segments=800):
 
 
 def get_SD_by_format(f,ind1,ind2,j):
-    x=np.mean(f[ind1,ind2,j.reshape(-1,1)],axis=1)
-    u=np.std(f[ind1,ind2,j.reshape(-1,1)],axis=1)
-    perc=np.percentile(f[ind1,ind2,j.reshape(-1,1)],np.array([0,25,50,75,100]),axis=1)
-    hist=np.vectorize(pyfunc=(lambda t:np.histogram(f[ind1,ind2,t],bins=50,range=(0,255))),
-                  signature='()->(j),(k)')(j)
+    srd=f[ind1,ind2,j.reshape(-1,1)]
+    x=np.mean(srd,axis=1)
+    u=np.std(srd,axis=1)
+    perc=np.percentile(srd,np.array([0,25,50,75,100]),axis=1)
+    #hist=np.vectorize(pyfunc=(lambda t:np.histogram(f[ind1,ind2,t],bins=50,range=(0,255))),signature='()->(j),(k)')(j)
+    hist=np.vectorize(pyfunc=(lambda dt,t:np.histogram(dt[t,:],bins=50,range=(0,1))),signature='(a,b),()->(j),(k)')(srd,j%3)
     Mo=np.vectorize(pyfunc=(lambda x,y:y[np.where(x==np.max(x))[0][0]]),signature='(j),(k)->()')(hist[0],hist[1])
     return np.vstack((x,u,perc,Mo))
 v_get_SD_by_format=np.vectorize(pyfunc=get_SD_by_format,signature='(x,y,z),(a),(b),(j)->(q,w)')
 
+def get_NSD_by_format(f,ind1,ind2,j,fac=1):
+    srd=f[ind1,ind2,j.reshape(-1,1)]
+    x=np.mean(srd,axis=1)
+    u=np.std(srd,axis=1)
+    nsrd=(srd-x.reshape(-1,1))/u.reshape(-1,1)
+    srd=srd[:,np.prod(u.reshape(-1,1)*fac>(np.abs(nsrd)),axis=0).astype("bool")]
+    x=np.mean(srd,axis=1)
+    u=np.std(srd,axis=1)
+    perc=np.percentile(srd,np.array([0,25,50,75,100]),axis=1)
+    hist=np.vectorize(pyfunc=(lambda dt,t:np.histogram(dt[t,:],bins=50,range=(0,255))),signature='(a,b),()->(j),(k)')(srd,j%3)
+    Mo=np.vectorize(pyfunc=(lambda x,y:y[np.where(x==np.max(x))[0][0]]),signature='(j),(k)->()')(hist[0],hist[1])
+    return np.vstack((x,u,perc,Mo))
+v_get_NSD_by_format=np.vectorize(pyfunc=get_SD_by_format,signature='(x,y,z),(a),(b),(j)->(q,w)')
+
 def pack_segments(DIRID,f,i):
     indx=np.where(f[:,:,12]==i)
-    SD_rgb_hsv_lab=v_get_SD_by_format(f,indx[0],indx[1],np.arange(1,13).reshape(-1,3))
+    SD_rgb_hsv_lab=v_get_SD_by_format(f,indx[0],indx[1],np.arange(0,12).reshape(-1,3))
     DIRID[i]['rgb_mean']=SD_rgb_hsv_lab[0,0]
     DIRID[i]['rgb_std']=SD_rgb_hsv_lab[0,1]
-    DIRID[i]['rgb_per']=SD_rgb_hsv_lab[0,2]
-    DIRID[i]['rgb_mo']=SD_rgb_hsv_lab[0,3]
+    DIRID[i]['rgb_per0']=SD_rgb_hsv_lab[0,2]
+    DIRID[i]['rgb_per25']=SD_rgb_hsv_lab[0,3]
+    DIRID[i]['rgb_per50']=SD_rgb_hsv_lab[0,4]
+    DIRID[i]['rgb_per75']=SD_rgb_hsv_lab[0,5]
+    DIRID[i]['rgb_per100']=SD_rgb_hsv_lab[0,6]
+    DIRID[i]['rgb_mo']=SD_rgb_hsv_lab[0,7]
     DIRID[i]['hsv_mean']=SD_rgb_hsv_lab[1,0]
     DIRID[i]['hsv_std']=SD_rgb_hsv_lab[1,1]
-    DIRID[i]['hsv_per']=SD_rgb_hsv_lab[1,2]
-    DIRID[i]['hsv_mo']=SD_rgb_hsv_lab[1,3]
+    DIRID[i]['hsv_per0']=SD_rgb_hsv_lab[1,2]
+    DIRID[i]['hsv_per25']=SD_rgb_hsv_lab[1,3]
+    DIRID[i]['hsv_per50']=SD_rgb_hsv_lab[1,4]
+    DIRID[i]['hsv_per75']=SD_rgb_hsv_lab[1,5]
+    DIRID[i]['hsv_per100']=SD_rgb_hsv_lab[1,6]
+    DIRID[i]['hsv_mo']=SD_rgb_hsv_lab[1,7]
     DIRID[i]['lab_mean']=SD_rgb_hsv_lab[2,0]
     DIRID[i]['lab_std']=SD_rgb_hsv_lab[2,1]
-    DIRID[i]['lab_per']=SD_rgb_hsv_lab[2,2]
-    DIRID[i]['lab_mo']=SD_rgb_hsv_lab[2,3]
+    DIRID[i]['lab_per0']=SD_rgb_hsv_lab[2,2]
+    DIRID[i]['lab_per25']=SD_rgb_hsv_lab[2,3]
+    DIRID[i]['lab_per50']=SD_rgb_hsv_lab[2,4]
+    DIRID[i]['lab_per75']=SD_rgb_hsv_lab[2,5]
+    DIRID[i]['lab_per100']=SD_rgb_hsv_lab[2,6]
+    DIRID[i]['lab_mo']=SD_rgb_hsv_lab[2,7]
+    DIRID[i]['lCh_mean']=SD_rgb_hsv_lab[3,0]
     DIRID[i]['lCh_std']=SD_rgb_hsv_lab[3,1]
-    DIRID[i]['lCh_per']=SD_rgb_hsv_lab[3,2]
-    DIRID[i]['lCh_mo']=SD_rgb_hsv_lab[3,3]
+    DIRID[i]['lCh_per0']=SD_rgb_hsv_lab[3,2]
+    DIRID[i]['lCh_per25']=SD_rgb_hsv_lab[3,3]
+    DIRID[i]['lCh_per50']=SD_rgb_hsv_lab[3,4]
+    DIRID[i]['lCh_per75']=SD_rgb_hsv_lab[3,5]
+    DIRID[i]['lCh_per100']=SD_rgb_hsv_lab[3,6]
+    DIRID[i]['lCh_mo']=SD_rgb_hsv_lab[3,7]
     #Descriptores espaciales--------------------------------------------
     DIRID[i]['x_mean']=np.mean(indx[0])
     DIRID[i]['x_std']=np.std(indx[0])
@@ -305,8 +338,10 @@ def get_Statistical_Descriptors_(img,mask,n_segments=800,angle=0):
     lum = np.mean(mask,axis=2).astype(int)
     mask1=lum>0
 
-    img=rotate(img,angle)
-    mask1=rotate(mask1,angle)
+    #img=rotate(img,angle)
+    #mask1=rotate(mask1,angle)
+    img=rotate(img,angle,resize=True)
+    mask1=rotate(mask1,angle,resize=True)
 
     m_slic = slic(image=img, n_segments=n_segments,sigma=5,slic_zero=True,mask=mask1)
     
@@ -318,11 +353,49 @@ def get_Statistical_Descriptors_(img,mask,n_segments=800,angle=0):
     LCh=toLCh(img)
     f[:,:,9:12]=LCh[:,:,0:3]
     f[:,:,12]=m_slic
+    DIRID={int(i):{'rgb_mean':np.zeros((1)),'rgb_std':np.zeros((1)),'rgb_mo':np.zeros((1)),
+                   'lab_mean':np.zeros((1)),'lab_std':np.zeros((1)),'lab_mo':np.zeros((1)),
+                   'hsv_mean':np.zeros((1)),'hsv_std':np.zeros((1)),'hsv_mo':np.zeros((1)),
+                  } for i in RID}
 
-    DIRID={int(i):{'rgb_mean':np.zeros((3)),'rgb_std':np.zeros((3)),'rgb_per':np.zeros((3)),'rgb_mo':np.zeros((3)),
-                   'lab_mean':np.zeros((3)),'lab_std':np.zeros((3)),'lab_per':np.zeros((3)),'lab_mo':np.zeros((3)),
-                   'hsv_mean':np.zeros((3)),'hsv_std':np.zeros((3)),'hsv_per':np.zeros((3)),'hsv_mo':np.zeros((3)),
-                   'LCh_mean':np.zeros((3)),'LCh_std':np.zeros((3)),'LCh_per':np.zeros((3)),'LCh_mo':np.zeros((3))
+    v_pack_segments(DIRID,f,RID)
+    return DIRID,m_slic
+
+def get_Normalized_Statistical_Descriptors_(img,mask,n_segments=800,angle=0):
+    lum = np.mean(mask,axis=2).astype(int)
+    mask1=lum>0
+
+    wth=200
+    fmw=np.prod(img>wth,axis=2)
+    wth=100
+    fmn=np.prod(img<wth,axis=2)
+    fm=np.logical_or(fmn,fmw)
+    img=st_adjust(img)
+#
+    img=rotate(img.astype('uint8'),angle,resize=True)
+    mask1=rotate(mask1,angle,resize=True)
+    fm=rotate(fm,angle,resize=True)
+
+    m_slic = slic(image=img, n_segments=n_segments,sigma=5,slic_zero=True,mask=mask1)
+
+
+    RID=np.unique(m_slic.flatten())
+    tm_slic=copy.deepcopy(m_slic)
+
+
+    tm_slic[np.where(fm)]=n_segments+5
+
+    f=np.zeros((img.shape[0],img.shape[1],3+3+3+3+1))
+    f[:,:,0:3]=(img[:,:,0:3]+np.array([0,0,0]))/np.array([1,1,1])
+    f[:,:,3:6]=(color.rgb2hsv(img)[:,:,0:3]+np.array([0,0,0]))/np.array([1,1,1])
+    f[:,:,6:9]=(color.rgb2lab(img)[:,:,0:3]+np.array([0,128,128]))/np.array([100,256,256])
+    LCh=toLCh(img)
+    f[:,:,9:12]=(LCh[:,:,0:3]+np.array([0,0,np.pi]))/np.array([100,(128*(2**0.5)),2*np.pi])
+    f[:,:,12]=tm_slic
+
+    DIRID={int(i):{'rgb_mean':np.zeros((1)),'rgb_std':np.zeros((1)),'rgb_mo':np.zeros((1)),
+                   'lab_mean':np.zeros((1)),'lab_std':np.zeros((1)),'lab_mo':np.zeros((1)),
+                   'hsv_mean':np.zeros((1)),'hsv_std':np.zeros((1)),'hsv_mo':np.zeros((1)),
                   } for i in RID}
 
     v_pack_segments(DIRID,f,RID)
@@ -343,8 +416,11 @@ def assemble_mask(xywh,img,ROI):
     mask[marco[1]:(marco[1]+marco[3]),marco[0]:(marco[0]+marco[2]),:]=ROI
     return mask
 
-def get_graph_from_image(image,mask,desired_nodes=20,angle=0):
-    SD,segments=get_Statistical_Descriptors_(image,mask,n_segments=desired_nodes,angle=angle)
+def get_graph_from_image(image,mask,desired_nodes=20,angle=0,normalized=False):
+    if normalized:
+      SD,segments=get_Normalized_Statistical_Descriptors_(image,mask,n_segments=desired_nodes,angle=angle)
+    else:
+      SD,segments=get_Statistical_Descriptors_(image,mask,n_segments=desired_nodes,angle=angle)
     nodes=np.array(list(SD))[:]
     node_features=np.vectorize(lambda SD,node:SD[node])(SD,nodes)
     G = nx.Graph()
@@ -352,7 +428,7 @@ def get_graph_from_image(image,mask,desired_nodes=20,angle=0):
         data=np.array(list(node_features[node].items()))[:,1]
         #print(data.shape)
         #print(data)
-        afeatures=np.concatenate((np.concatenate(data[:19]),data[19:]))
+        afeatures=np.concatenate((np.concatenate(data[:32]),data[32:]))
         #print(afeatures)
         n_features=afeatures.shape[0]
         G.add_node(node-1, features = afeatures)
