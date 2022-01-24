@@ -33,7 +33,7 @@ def train_model(
         ):
     print("Reading dataset")
 
-    sub_dir="MMhh_SelFR_v10_BinCl//"
+    sub_dir="MMhh_SelFR_v10_BinCl2//"
     print(os.path.join(os.path.dirname(os.path.realpath(__file__)),sub_dir))
 
     ind=np.arange(0,len(dataset))
@@ -60,7 +60,7 @@ def train_model(
         test_idx=indexes[int(i*L/folds):int((i+1)*L/folds)]
         train_idx=np.delete(indexes,np.arange(int(i*L/folds),int((i+1)*L/folds)))
         
-        model = GAT_ANE_MHH(8,1)
+        model = GAT_ANE_MHH(9,1)
         if use_cuda:
             model = model.cuda()
     
@@ -258,9 +258,10 @@ def main(
     dataset=Rotated_Dataset(data_arg,Data_version,
                         range=[10,14],
                         features=[
-                            6,
-                            -8,
-                            -7,
+                            12,
+                            13,
+                            15,
+                            16,
                             -5,
                             -4,
                             -3,
@@ -272,7 +273,7 @@ def main(
     if train:
 
         results=train_model(dataset,
-                epochs=int(550),
+                epochs=int(650),
                 #epochs=int(5),
                 batch_size=int(400),
                 use_cuda=True,
